@@ -37,9 +37,9 @@ alias reload='source ~/.bashrc'     # reload bash config.
 #Automatically do an ls after each cd
 cd() {
       if [ -n "$1" ]; then
-              builtin cd "$@" && ls
+              builtin cd "$@" && ls -hF
                 else
-                        builtin cd ~ && ls
+                        builtin cd ~ && ls -hF
                           fi
 }
 # Get IP (call with myip)
