@@ -4,6 +4,7 @@
 " # david.aizenberg@paranoici.org# 
 " ################################
 
+" #Requirements: Pathogen, Airline, NERDTree, Mustang colour theme
 
 " Turn syntax highlight on.
 syntax on
@@ -75,3 +76,4 @@ let javascript_enable_domhtmlcss=1
 " Set 256 colour mode and Theme.
 set t_Co=256
 colorscheme mustang
+
