@@ -1,0 +1,7 @@
+#include <stdio.h>
+#include <stdlib.h> 
+
+int shit = 1;
+int zShit = 2;
+
+printf("shit = %d; Shit = %d", shit, zShit);

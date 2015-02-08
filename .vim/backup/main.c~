@@ -1,0 +1,12 @@
+#include <stdio.h>
+
+int some_number; 
+int shift_value;
+int resulting_value;
+
+some_number = 1;
+shift_value = 11; 
+
+*some_number <<= shift_value;
+
+

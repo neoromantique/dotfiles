@@ -20,7 +20,7 @@ set laststatus=2
 let g:airline_powerline_fonts = 1 
 
 "bind F2 as a Toggle for NERDTree
-map <C-E> :NERDTreeToggle<CR>
+map silent <C-E> :NERDTreeToggle<CR>
 
 "Configure vim to backup files, might save sometime, definitely will not hurt.
 set backup

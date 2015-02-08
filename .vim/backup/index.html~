@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+     <!-- Head -->
+    <link rel="stylesheet" href="bower_components/lumx/dist/css/lumx.css">
+    <title> David Aizenberg </title>
+    <script>
+      angular.module('myModule', ['lumx']);
+    </script>
+
+  </head>
+<body>
+
+  <div>
+  
+  </div>
+ 
+
+  <script src="bower_components/jquery/dist/jquery.js"></script>
+  <script src="bower_components/velocity/velocity.js"></script>
+  <script src="bower_components/moment/min/moment-with-locales.min.js"></script>
+  <script src="bower_components/angular/angular.js"></script>
+  <script src="bower_components/lumx/dist/js/lumx.js"></script>
+
+</body>
+</html>
+

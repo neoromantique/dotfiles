@@ -1,0 +1,6 @@
+extends layout
+
+block content
+  p Server №1: cat-free: 
+   span(style="color:#{local.color}") #{local.ping}
+  a(href="/") Come back to Index Page
