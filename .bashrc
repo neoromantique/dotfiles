@@ -7,16 +7,15 @@
 
 
 
-
-
-#Here goes custom stuff by David.
+#Exports
+EDITOR=vim
 
 
 #Thanks to http://bashrcgenerator.com/
 export PS1="\[\e[00;32m\]\u\[\e[0m\]\[\e[00;37m\]@\h:\[\e[0m\]\[\e[00;36m\][\[\e[0m\]\[\e[00;32m\]\w\[\e[0m\]\[\e[00;36m\]]\[\e[0m\]\[\e[00;37m\]\\$ \[\e[0m\]"
 
 
-
+#Aliases
 alias ls='ls -hF --color'    # add colors for filetype recognition
 alias la='ls -Al'        # show hidden files
 alias tree='tree -Cs'        # nice alternative to 'ls'
@@ -26,10 +25,10 @@ alias mv='mv -i'            # ^
 alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
 
-alias ports='netstat -nape --inet'  #Network mon. aliases.
+alias ports='sudo netstat -nape --inet'  #Network mon. aliases.
 alias opennet='lsof -i'
 alias ping='ping -c 4'
-alias ns='netstat -alnp --protocol=inet'
+alias ns='sudo netstat -alnp --protocol=inet'
 
 alias reload='source ~/.bashrc'     # reload bash config.
 

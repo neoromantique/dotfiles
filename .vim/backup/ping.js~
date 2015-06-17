@@ -1,6 +1,0 @@
-//module.exports = User;
-
-var servers[] = 'x.x.x.x', 'x.x.x.x', 'x,x,x,x';
-
-var Target = "8.8.8.8";
-exports.Target = Target;

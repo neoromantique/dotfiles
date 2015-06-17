@@ -20,7 +20,7 @@ set laststatus=2
 let g:airline_powerline_fonts = 1 
 
 "bind F2 as a Toggle for NERDTree
-map <C-E> :NERDTreeToggle<CR>
+map <F2> :NERDTreeToggle<CR>
 
 "Configure vim to backup files, might save sometime, definitely will not hurt.
 set backup
@@ -67,7 +67,7 @@ autocmd FileType make setlocal noexpandtab
 
 " JavaScript
 " autocmd BufRead,BufNewFile *.json setfiletype javascript
-autocmd FileType javascript setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
+autocmd FileType javascript setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
 let javascript_enable_domhtmlcss=1
 
 
