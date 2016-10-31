@@ -9,6 +9,8 @@
 " Turn syntax highlight on.
 syntax on
 
+
+
 "for future use.
 let mapleader = ","
 
@@ -18,6 +20,8 @@ execute pathogen#infect()
 "Enable Airline
 set laststatus=2
 let g:airline_powerline_fonts = 1 
+
+autocmd VimEnter * NERDTree
 
 "bind F2 as a Toggle for NERDTree
 map <F2> :NERDTreeToggle<CR>
@@ -69,6 +73,8 @@ autocmd FileType make setlocal noexpandtab
 " autocmd BufRead,BufNewFile *.json setfiletype javascript
 autocmd FileType javascript setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
 let javascript_enable_domhtmlcss=1
+let g:javascript_plugin_jsdoc = 1
+let g:javascript_plugin_ngdoc = 1
 
 
 " Set 256 colour mode and Theme.
