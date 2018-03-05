@@ -32,6 +32,21 @@ alias ns='sudo netstat -alnp --protocol=inet'
 
 alias reload='source ~/.bashrc'     # reload bash config.
 
+#Git specific aliases
+
+alias gcl='git clone'
+alias ga='git add'
+alias gr='git reset HEAD'
+alias gitwipe='git reset --hard && git clean -dfx'
+alias g='git'
+alias get='git'
+alias gst='git status'
+alias pull='git pull'
+alias push='git push'
+alias commit='git commit -v -m'
+alias checkout='git checkout'
+alias master='git checkout master'
+alias blame='git log --graph --pretty=oneline --abbrev-commit'
 
 #Automatically do an ls after each cd
 cd() {
@@ -46,4 +61,6 @@ function myip {
       myip=`elinks -dump http://checkip.dyndns.org:8245/`
         echo "${myip}"
 }
-
+if [ -f /etc/bash_completion ]; then
+ . /etc/bash_completion
+fi
