@@ -49,4 +49,4 @@ echo -e "${GREEN} clearning up ${RESET}"
 rm -rf tmp/
 
 
-echo -e "booyah, ${GREEN} there you go! ${RESET}"
+echo -e "${GREEN} booyah, there you go! ${RESET}"

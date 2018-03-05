@@ -21,7 +21,7 @@ execute pathogen#infect()
 set laststatus=2
 let g:airline_powerline_fonts = 1 
 
-autocmd VimEnter * NERDTree
+"autocmd VimEnter * NERDTree
 
 "bind Ctrl + E as a Toggle for NERDTree
 map <C-e> :NERDTreeToggle<CR>
