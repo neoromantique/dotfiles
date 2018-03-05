@@ -23,8 +23,8 @@ let g:airline_powerline_fonts = 1
 
 autocmd VimEnter * NERDTree
 
-"bind F2 as a Toggle for NERDTree
-map <F2> :NERDTreeToggle<CR>
+"bind Ctrl + E as a Toggle for NERDTree
+map <C-e> :NERDTreeToggle<CR>
 
 "Configure vim to backup files, might save sometime, definitely will not hurt.
 set backup
