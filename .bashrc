@@ -1,6 +1,6 @@
 
  ################################
- # 2014. WTFPL.                 #
+ # 2018. WTFPL.                 #
  #.bashrc by David Aizenberg    #
  # david.aizenberg@paranoici.org# 
  ################################
