@@ -25,6 +25,9 @@ alias mv='mv -i'            # ^
 alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
 
+#Add snapd to path
+PATH=$PATH:/snap/bin
+
 alias ports='sudo netstat -nape --inet'  #Network mon. aliases.
 alias opennet='lsof -i'
 alias ping='ping -c 4'
@@ -68,3 +71,9 @@ fi
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+PATH="/home/neo/perl5/bin${PATH:+:${PATH}}"; export PATH;
+PERL5LIB="/home/neo/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB;
+PERL_LOCAL_LIB_ROOT="/home/neo/perl5${PERL_LOCAL_LIB_ROOT:+:${PERL_LOCAL_LIB_ROOT}}"; export PERL_LOCAL_LIB_ROOT;
+PERL_MB_OPT="--install_base \"/home/neo/perl5\""; export PERL_MB_OPT;
+PERL_MM_OPT="INSTALL_BASE=/home/neo/perl5"; export PERL_MM_OPT;
