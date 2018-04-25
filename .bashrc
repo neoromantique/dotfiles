@@ -77,3 +77,10 @@ PERL5LIB="/home/neo/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB;
 PERL_LOCAL_LIB_ROOT="/home/neo/perl5${PERL_LOCAL_LIB_ROOT:+:${PERL_LOCAL_LIB_ROOT}}"; export PERL_LOCAL_LIB_ROOT;
 PERL_MB_OPT="--install_base \"/home/neo/perl5\""; export PERL_MB_OPT;
 PERL_MM_OPT="INSTALL_BASE=/home/neo/perl5"; export PERL_MM_OPT;
+
+# Yavide alias
+alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
+
+alias w='python ~/t/t.py --task-dir ~/tasks --list tasks_work'
+alias t='python ~/t/t.py --task-dir ~/tasks --list tasks'
+
