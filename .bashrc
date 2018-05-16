@@ -6,7 +6,6 @@
  ################################
 
 
-
 #Exports
 EDITOR=vim
 
@@ -26,6 +25,8 @@ alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
 
 alias ss='sshch'
+
+alias dump="HASTE_SERVER=https://dump.aizenberg.co.uk haste"
 
 alias ports='sudo netstat -nape --inet'  #Network mon. aliases.
 alias opennet='lsof -i'

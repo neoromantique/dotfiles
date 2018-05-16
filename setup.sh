@@ -12,17 +12,28 @@ mkdir -p ~/.vim/backup
 mkdir -p ~/.vim/tmp
 mkdir -p ~/.vim/colors
 
+read -p "Delete old backups? " -n 1 -r
+echo    
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+	echo -e "${GREEN} Wiping old backups ${RESET}"
+	rm -rf ~/.vim~
+	rm -f ~/.vimrc~
+	rm -f ~/.bashrc~
+	echo -e "${GREEN} Deleted old backups ${RESET}"
+fi
+
 # Create tmp dir
 mkdir tmp/
 
 echo -e "${GREEN} Backing Up and moving configs ${RESET}"
 
-cp ~/.bashrc ~/.bashrc~
-ln -sf .bashrc ~/.bashrc
+mv ~/.bashrc ~/.bashrc~
+ln -rsf .bashrc ~/.bashrc
 
-cp -r ~/.vimrc ~/.vimrc~
-cp -r ~/.vim ~/.vim~
-ln -sf .vimrc ~/.vimrc
+mv ~/.vimrc ~/.vimrc~
+mv ~/.vim ~/.vim~
+ln -rsf .vimrc ~/.vimrc
 
 echo -e "${GREEN} Installing Pathogen ${RESET}"
 
