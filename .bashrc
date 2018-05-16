@@ -25,8 +25,7 @@ alias mv='mv -i'            # ^
 alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
 
-#Add snapd to path
-PATH=$PATH:/snap/bin
+alias ss='sshch'
 
 alias ports='sudo netstat -nape --inet'  #Network mon. aliases.
 alias opennet='lsof -i'
@@ -35,13 +34,14 @@ alias ns='sudo netstat -alnp --protocol=inet'
 
 alias reload='source ~/.bashrc'     # reload bash config.
 
+alias g='grep'
+
 #Git specific aliases
 
 alias gcl='git clone'
 alias ga='git add'
 alias gr='git reset HEAD'
 alias gitwipe='git reset --hard && git clean -dfx'
-alias g='git'
 alias get='git'
 alias gst='git status'
 alias pull='git pull'
@@ -53,12 +53,21 @@ alias blame='git log --graph --pretty=oneline --abbrev-commit'
 
 #Automatically do an ls after each cd
 cd() {
-      if [ -n "$1" ]; then
-              builtin cd "$@" && ls -hF
-                else
-                        builtin cd ~ && ls -hF
-                          fi
+  if [ -n "$1" ]; then
+     builtin cd "$@" && ls -hF
+  else
+     builtin cd ~ && ls -hF
+  fi
 }
+
+
+# Logbook 
+# Idea taken from: https://news.ycombinator.com/item?id=17064520
+
+lb() {
+    vim ~/Dropbox/logbooks/$(date '+%d-%m-%Y').md 
+} 
+
 # Get IP (call with myip)
 function myip {
       myip=`elinks -dump http://checkip.dyndns.org:8245/`
@@ -71,16 +80,13 @@ fi
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-PATH="/home/neo/perl5/bin${PATH:+:${PATH}}"; export PATH;
-PERL5LIB="/home/neo/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB;
-PERL_LOCAL_LIB_ROOT="/home/neo/perl5${PERL_LOCAL_LIB_ROOT:+:${PERL_LOCAL_LIB_ROOT}}"; export PERL_LOCAL_LIB_ROOT;
-PERL_MB_OPT="--install_base \"/home/neo/perl5\""; export PERL_MB_OPT;
-PERL_MM_OPT="INSTALL_BASE=/home/neo/perl5"; export PERL_MM_OPT;
-
 # Yavide alias
 alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
 
-alias w='python ~/t/t.py --task-dir ~/tasks --list tasks_work'
-alias t='python ~/t/t.py --task-dir ~/tasks --list tasks'
+alias t='python ~/t/t.py --task-dir ~/Dropbox --list tasks'
+
+# include .bashrc helpers if they exist (Non-Open Source helpers)
+if [ -f $HOME/.bash_helpers ]; then
+    . $HOME/.bash_helpers
+fi
 

@@ -18,11 +18,11 @@ mkdir tmp/
 echo -e "${GREEN} Backing Up and moving configs ${RESET}"
 
 cp ~/.bashrc ~/.bashrc~
-cp .bashrc ~/.bashrc
+ln -sf .bashrc ~/.bashrc
 
 cp -r ~/.vimrc ~/.vimrc~
 cp -r ~/.vim ~/.vim~
-cp .vimrc ~/.vimrc
+ln -sf .vimrc ~/.vimrc
 
 echo -e "${GREEN} Installing Pathogen ${RESET}"
 
