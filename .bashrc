@@ -34,7 +34,7 @@ alias ping='ping -c 4'
 alias ns='sudo netstat -alnp --protocol=inet'
 
 alias reload='source ~/.bashrc'     # reload bash config.
-
+alias kb="setxkbmap -layout gb,ru -option -option grp:caps_toggle,grp_led:scroll,terminate:ctrl_alt_bksp"
 alias g='grep'
 
 #Git specific aliases
@@ -84,7 +84,7 @@ export NVM_DIR="$HOME/.nvm"
 # Yavide alias
 alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
 
-alias t='python ~/t/t.py --task-dir ~/Dropbox --list tasks'
+alias t='clear ; python ~/t/t.py --task-dir ~/Dropbox --list tasks'
 
 # include .bashrc helpers if they exist (Non-Open Source helpers)
 if [ -f $HOME/.bash_helpers ]; then
