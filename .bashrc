@@ -85,6 +85,10 @@ export NVM_DIR="$HOME/.nvm"
 alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
 
 alias t="clear; python ~/t/t.py --task-dir ~/Dropbox --list tasks"
+function ta() {
+    t "$1"
+    t
+}
 function tf() {
     t -f "$1"
     t
