@@ -84,8 +84,11 @@ export NVM_DIR="$HOME/.nvm"
 # Yavide alias
 alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
 
-alias t='clear ; python ~/t/t.py --task-dir ~/Dropbox --list tasks'
-
+alias t="clear; python ~/t/t.py --task-dir ~/Dropbox --list tasks"
+function tf() {
+    t -f "$1"
+    t
+}
 # include .bashrc helpers if they exist (Non-Open Source helpers)
 if [ -f $HOME/.bash_helpers ]; then
     . $HOME/.bash_helpers
