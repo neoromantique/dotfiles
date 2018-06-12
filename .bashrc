@@ -39,6 +39,7 @@ alias g='grep'
 
 #Git specific aliases
 
+alias store='git config credential.helper store'
 alias gcl='git clone'
 alias ga='git add'
 alias gr='git reset HEAD'
