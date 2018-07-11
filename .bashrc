@@ -24,6 +24,7 @@ alias mv='mv -i'            # ^
 alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
 
+alias scrot="scrot -s /tmp/screenshot-$(date +%F_%T).png -e 'xclip -selection c -t image/png < $f' &>/dev/null"
 alias ss='sshch'
 
 alias dump="HASTE_SERVER=https://dump.aizenberg.co.uk haste"
@@ -99,3 +100,4 @@ if [ -f $HOME/.bash_helpers ]; then
     . $HOME/.bash_helpers
 fi
 
+alias screen_record='bash screen_record.sh'
