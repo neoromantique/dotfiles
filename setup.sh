@@ -25,6 +25,7 @@ mv ~/.vim ~/.vim~
 echo -e "${GREEN} Preparing ${RESET}"
 
 touch ~/.bashrc ~/.vimrc
+mkdir -p ~/.config/wmfs
 mkdir -p ~/.vim
 mkdir -p ~/.vim/backup
 mkdir -p ~/.vim/tmp
@@ -34,6 +35,7 @@ mkdir -p ~/.vim/colors
 # Create tmp dir
 mkdir tmp/
 
+ln -rsf wmfsrc ~/.config/wmfs/wmfsrc
 
 ln -rsf .bashrc ~/.bashrc
 
