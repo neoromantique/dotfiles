@@ -54,6 +54,8 @@ alias checkout='git checkout'
 alias master='git checkout master'
 alias blame='git log --graph --pretty=oneline --abbrev-commit'
 
+alias du="ncdu --color dark -rr -x --exclude .git --exclude node_modules"
+
 #Automatically do an ls after each cd
 cd() {
   if [ -n "$1" ]; then
