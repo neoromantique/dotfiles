@@ -64,6 +64,9 @@ cd() {
   fi
 }
 
+rain() {
+curl -4 http://wttr.in/$1
+}
 
 # Logbook 
 # Idea taken from: https://news.ycombinator.com/item?id=17064520
