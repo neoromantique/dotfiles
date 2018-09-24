@@ -24,7 +24,6 @@ alias mv='mv -i'            # ^
 alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
 
-alias scrot="scrot -s /tmp/screenshot-$(date +%F_%T).png -e 'xclip -selection c -t image/png < $f' &>/dev/null"
 alias ss='sshch'
 
 alias dump="HASTE_SERVER=https://dump.aizenberg.co.uk haste"
@@ -54,7 +53,7 @@ alias checkout='git checkout'
 alias master='git checkout master'
 alias blame='git log --graph --pretty=oneline --abbrev-commit'
 
-alias du="ncdu --color dark -rr -x --exclude .git --exclude node_modules"
+alias du="ncdu -rr -x --exclude .git --exclude node_modules"
 
 #Automatically do an ls after each cd
 cd() {
@@ -74,10 +73,8 @@ lb() {
 } 
 
 # Get IP (call with myip)
-function myip {
-      myip=`elinks -dump http://checkip.dyndns.org:8245/`
-        echo "${myip}"
-}
+alias myip="curl http://ipecho.net/plain; echo"
+
 if [ -f /etc/bash_completion ]; then
  . /etc/bash_completion
 fi
