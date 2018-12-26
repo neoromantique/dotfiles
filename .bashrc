@@ -25,6 +25,8 @@ alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
 
 alias ss='sshch'
+alias rtv='rtv --enable-media'
+
 
 alias dump="HASTE_SERVER=https://dump.aizenberg.co.uk haste"
 
