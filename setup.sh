@@ -9,7 +9,9 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
 	echo -e "${GREEN} Wiping old backups ${RESET}"
-	rm -rf ~/.vim~
+	rm -rf ~/.config/i3status~
+	rm -rf ~/.config/i3~
+        rm -rf ~/.vim~
 	rm -f ~/.vimrc~
 	rm -f ~/.bashrc~
 	echo -e "${GREEN} Deleted old backups ${RESET}"
@@ -18,6 +20,8 @@ fi
 
 echo -e "${GREEN} Backing Up and moving configs ${RESET}"
 
+mv ~/.config/i3status ~/.config/i3status~
+mv ~/.config/i3 ~/.config/i3~
 mv ~/.bashrc ~/.bashrc~
 mv ~/.vimrc ~/.vimrc~
 mv ~/.vim ~/.vim~
@@ -26,6 +30,8 @@ echo -e "${GREEN} Preparing ${RESET}"
 
 touch ~/.bashrc ~/.vimrc
 mkdir -p ~/.config/wmfs
+mkdir -p ~/.config/i3
+mkdir -p ~/.config/i3status
 mkdir -p ~/.vim
 mkdir -p ~/.vim/backup
 mkdir -p ~/.vim/tmp
@@ -36,6 +42,9 @@ mkdir -p ~/.vim/colors
 mkdir tmp/
 
 ln -rsf wmfsrc ~/.config/wmfs/wmfsrc
+
+ln -rsf i3/config ~/.config/i3/config
+ln -rsf i3status/config ~/.config/i3status/config
 
 ln -rsf .bashrc ~/.bashrc
 
@@ -52,14 +61,14 @@ echo -e "${GREEN} Installing Deps ${RESET}"
 echo -e "vim-airline"
 echo -e "${GREEN} Please run :helptags on first run ${RESET}"
 
-git clone https://github.com/vim-airline/vim-airline ~/.vim/bundle/vim-airline
+git clone https://github.com/vim-airline/vim-airline ~/.vim/bundle/vim-airline &> /dev/null
 
 echo -e "${GREEN} nerdtree ${RESET}"
 
-git clone https://github.com/scrooloose/nerdtree.git ~/.vim/bundle/nerdtree
+git clone https://github.com/scrooloose/nerdtree.git ~/.vim/bundle/nerdtree &> /dev/null
 
 echo -e "${GREEN} mustang colour theme ${RESET}" 
-git clone https://github.com/croaker/mustang-vim tmp/
+git clone https://github.com/croaker/mustang-vim tmp/ &> /dev/null
 cp tmp/colors/mustang.vim ~/.vim/colors/
 
 echo -e "${GREEN} clearning up ${RESET}" 
