@@ -48,6 +48,13 @@ ln -rsf i3status/config ~/.config/i3status/config
 
 ln -rsf .bashrc ~/.bashrc
 
+read -p "Install screen lock unit for systemd? Requires sudo? " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+	sudo ln -rsf i3lock.service /etc/systemd/system/i3lock.service
+	sudo systemctl enable i3lock.service
+fi
 mkdir -p ~/.vim
 ln -rsf .vimrc ~/.vimrc
 
