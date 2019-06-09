@@ -27,6 +27,7 @@ alias vi='vim'              # Also convinient
 alias ss='sshch'
 alias rtv='rtv --enable-media'
 
+alias moc='mocp --theme=transparent-background'
 
 alias dump="HASTE_SERVER=https://dump.aizenberg.co.uk haste"
 
@@ -56,6 +57,8 @@ alias master='git checkout master'
 alias blame='git log --graph --pretty=oneline --abbrev-commit'
 
 alias du="ncdu -rr -x --exclude .git --exclude node_modules"
+
+alias fixtouch="xinput map-to-output 9 eDP-1"
 
 #Automatically do an ls after each cd
 cd() {
@@ -108,3 +111,5 @@ if [ -f $HOME/.bash_helpers ]; then
 fi
 
 alias screen_record='bash screen_record.sh'
+export GOPATH=$HOME/go
+PATH=$GOPATH/bin:$PATH
