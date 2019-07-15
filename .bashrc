@@ -24,6 +24,8 @@ alias mv='mv -i'            # ^
 alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
 
+alias joplin='/home/david/.joplin/Joplin.AppImage'
+
 alias ss='sshch'
 alias rtv='rtv --enable-media'
 

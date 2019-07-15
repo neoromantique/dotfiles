@@ -21,6 +21,7 @@ exec feh --bg-fill /home/david/Pictures/wall.png
 exec setxkbmap -layout gb,ru -variant ,winkeys -option grp:caps_toggle,grp_led:scroll,terminate:ctrl_alt_bksp,compose:ralt
 
 
+
 # This font is widely installed, provides lots of unicode glyphs, right-to-left
 # text rendering and scalability on retina/hidpi displays (thanks to pango).
 #font pango:DejaVu Sans Mono 8
@@ -36,9 +37,9 @@ exec setxkbmap -layout gb,ru -variant ,winkeys -option grp:caps_toggle,grp_led:s
 floating_modifier $mod
 
 # Pulse Audio controls
-bindsym XF86AudioRaiseVolume exec pactl set-sink-volume 3 +5% #increase sound volume
-bindsym XF86AudioLowerVolume exec pactl set-sink-volume 3 -5% #decrease sound volume
-bindsym XF86AudioMute exec pactl set-sink-mute 3 toggle # mute sound
+bindsym XF86AudioRaiseVolume exec pactl set-sink-volume 0 +5% #increase sound volume
+bindsym XF86AudioLowerVolume exec pactl set-sink-volume 0 -5% #decrease sound volume
+bindsym XF86AudioMute exec pactl set-sink-mute 0 toggle # mute sound
 
 bindsym XF86MonBrightnessUp exec xbacklight -inc 10 # increase screen brightness
 bindsym XF86MonBrightnessDown exec xbacklight -dec 10 # decrease screen brightness
@@ -57,22 +58,22 @@ bindsym $mod+d exec dmenu_run
 # bindsym $mod+d exec --no-startup-id i3-dmenu-desktop
 
 # change focus
-bindsym $mod+j focus left
-bindsym $mod+k focus down
+bindsym $mod+Shif+j focus left
+bindsym $mod+Shift+k focus down
 bindsym $mod+l focus up
 bindsym $mod+semicolon focus right
 
 # alternatively, you can use the cursor keys:
-bindsym $mod+Left focus left
-bindsym $mod+Down focus down
-bindsym $mod+Up focus up
-bindsym $mod+Right focus right
+#bindsym $mod+Left focus left
+#bindsym $mod+Down focus down
+#bindsym $mod+Up focus up
+#bindsym $mod+Right focus right
 
 # move focused window
-bindsym $mod+Shift+j move left
-bindsym $mod+Shift+k move down
-bindsym $mod+Shift+l move up
-bindsym $mod+Shift+semicolon move right
+#bindsym $mod+Shift+j move left
+#bindsym $mod+Shift+k move down
+#bindsym $mod+Shift+l move up
+#bindsym $mod+Shift+semicolon move right
 
 # alternatively, you can use the cursor keys:
 bindsym $mod+Shift+Left move left
@@ -130,6 +131,11 @@ bindsym $mod+Shift+8 move container to workspace 8
 bindsym $mod+Shift+9 move container to workspace 9
 bindsym $mod+Shift+0 move container to workspace 10
 
+# mocp
+#bindsym $mod+Shift+j exec "/usr/bin/mocp -G"
+bindsym $mod+p exec "/usr/bin/mocp -G"
+bindsym $mod+k exec "/usr/bin/mocp -f"
+bindsym $mod+j exec "/usr/bin/mocp -r"
 
 bindsym $super+l exec i3lock -i /home/david/Pictures/wall.png
 # reload the configuration file

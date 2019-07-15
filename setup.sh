@@ -58,11 +58,17 @@ fi
 mkdir -p ~/.vim
 ln -rsf .vimrc ~/.vimrc
 
+#git clone https://github.com/neoclide/coc.nvim ~/.vim/pack/plugins/start/coc.nvim
+#cd ~/.vim/pack/plugins/start/coc.nvim && ./install.sh && yarn install --frozen-lockfile
+
 echo -e "${GREEN} Installing Pathogen ${RESET}"
 
 mkdir -p ~/.vim/autoload ~/.vim/bundle && \
 curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
 
+mkdir -p ~/.vim/plugin
+
+wget "https://www.vim.org/scripts/download_script.php?src_id=26272" -O ~/.vim/plugin/switch.vim
 
 echo -e "${GREEN} Installing Deps ${RESET}"
 echo -e "vim-airline"
