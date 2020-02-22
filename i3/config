@@ -17,9 +17,9 @@ set $super Mod4
 font pango:monospace 8
 
 #exec feh --bg-fill /home/david/Pictures/Wallpapers/ellie_full.jpg
-exec feh --bg-fill /home/david/Pictures/wall.png
+exec feh --bg-fill /home/david/Pictures/wall.jpg
 exec setxkbmap -layout gb,ru -variant ,winkeys -option grp:caps_toggle,grp_led:scroll,terminate:ctrl_alt_bksp,compose:ralt
-
+exec /home/david/.screenlayout/main.sh
 
 
 # This font is widely installed, provides lots of unicode glyphs, right-to-left
