@@ -17,6 +17,16 @@ then
 	echo -e "${GREEN} Deleted old backups ${RESET}"
 fi
 
+read -n 1 -p "Is this desktop or laptop? (d/l/q) " ans;
+
+case $ans in
+    d|D)
+        PLATFORM='desktop';;
+    l|L)
+        PLATFORM='laptop';;
+    *)
+        exit;;
+esac
 
 echo -e "${GREEN} Backing Up and moving configs ${RESET}"
 
@@ -41,14 +51,16 @@ mkdir -p ~/.vim/colors
 # Create tmp dir
 mkdir tmp/
 
-ln -rsf wmfsrc ~/.config/wmfs/wmfsrc
+# obsolette for now
+# ln -rsf wmfsrc ~/.config/wmfs/wmfsrc
 
-ln -rsf i3/config ~/.config/i3/config
-ln -rsf i3status/config ~/.config/i3status/config
+ln -rsf ${PLATFORM}/i3/config ~/.config/i3/config
+ln -rsf ${PLATFORM}/i3status/config ~/.config/i3status/config
 
+ln -rsf .zshrc ~/.zshrc
 ln -rsf .bashrc ~/.bashrc
 
-read -p "Install screen lock unit for systemd? Requires sudo? " -n 1 -r
+read -p "Install screen lock unit for systemd? Requires sudo " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
@@ -68,7 +80,7 @@ curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
 
 mkdir -p ~/.vim/plugin
 
-wget "https://www.vim.org/scripts/download_script.php?src_id=26272" -O ~/.vim/plugin/switch.vim
+#wget "https://www.vim.org/scripts/download_script.php?src_id=26272" -O ~/.vim/plugin/switch.vim
 
 echo -e "${GREEN} Installing Deps ${RESET}"
 echo -e "vim-airline"

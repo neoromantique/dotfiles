@@ -43,6 +43,9 @@ set cul
 set number
 highlight LineNr ctermfg=grey
 
+" map F5 to inserting the time/date
+nnoremap <F5> "=strftime("%I:%M %p %a %d/%m/%Y")<CR>p
+inoremap <F5> <C-R>=strftime("%I:%M %p %a %d/%m/%Y")<CR>
 
 "set list                        " show invisible characters
 "set mouse=a                     " try to use a mouse in the console (wimp!)
@@ -50,10 +53,13 @@ set autoindent                  " set the cursor at same indent as line above
 set smartindent                 " try to be smart about indenting (C-style)
 set noexpandtab
 
+" use blowfish for file encryption
+set cm=blowfish
+
+
 " ###############################
 " # Language Dependent settings #
 " ###############################
-
 
 " Shell
 autocmd FileType sh setlocal expandtab shiftwidth=4 tabstop=8 softtabstop=4
