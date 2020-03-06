@@ -116,7 +116,7 @@ alias opennet='lsof -i'
 alias ping='ping -c 4'
 alias ns='sudo netstat -alnp --protocol=inet'
 
-alias reload='source ~/.bashrc'     # reload bash config.
+alias reload='source ~/.zshrc'     # reload config.
 alias kb="setxkbmap -layout gb,ru -option -option grp:caps_toggle,grp_led:scroll,terminate:ctrl_alt_bksp"
 alias g='grep'
 
@@ -175,6 +175,8 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 # Yavide alias
 alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
+
+alias screenoff="sleep 1 ; xset dpms force off"
 
 alias t="clear; python ~/t/t.py --task-dir ~/Dropbox --list tasks"
 function ta() {
