@@ -56,7 +56,8 @@ bindsym $mod+Return exec i3-sensible-terminal
 # kill focused window
 bindsym $mod+Shift+q kill
 
-bindsym --release Print exec scrot -s ~/Pictures/Screenshots/%b%d::%H%M%S.png 
+#bindsym --release Print exec scrot -s ~/Pictures/Screenshots/%b%d::%H%M%S.png 
+bindsym --release Print exec scrot -s '/tmp/%F_%T_$wx$h.png' -e 'xclip -selection clipboard -target image/png -i $f' 
 
 # start dmenu (a program launcher)
 bindsym $mod+d exec dmenu_run

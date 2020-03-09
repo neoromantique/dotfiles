@@ -115,3 +115,6 @@ fi
 alias screen_record='bash screen_record.sh'
 export GOPATH=$HOME/go
 PATH=$GOPATH/bin:$PATH
+
+# Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
+export PATH="$PATH:$HOME/.rvm/bin"
