@@ -14,6 +14,7 @@ then
         rm -rf ~/.vim~
 	rm -f ~/.vimrc~
 	rm -f ~/.bashrc~
+	rm -f ~/.zshrc~
 	echo -e "${GREEN} Deleted old backups ${RESET}"
 fi
 
@@ -33,6 +34,7 @@ echo -e "${GREEN} Backing Up and moving configs ${RESET}"
 mv ~/.config/i3status ~/.config/i3status~
 mv ~/.config/i3 ~/.config/i3~
 mv ~/.bashrc ~/.bashrc~
+mv ~/.zshrc ~/.zshrc~
 mv ~/.vimrc ~/.vimrc~
 mv ~/.vim ~/.vim~
 

@@ -52,8 +52,11 @@ ZSH_THEME="sunaku"
 # much, much faster.
 # DISABLE_UNTRACKED_FILES_DIRTY="true"
 
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
 # Uncomment the following line if you want to change the command execution time
-# stamp shown in the history command output.
+# shown stamp in the history command output.
 # You can set one of the optional three formats:
 # "mm/dd/yyyy"|"dd.mm.yyyy"|"yyyy-mm-dd"
 # or set a custom format using the strftime function format specifications,
@@ -136,6 +139,23 @@ alias checkout='git checkout'
 alias master='git checkout master'
 alias blame='git log --graph --pretty=oneline --abbrev-commit'
 
+alias 2c='rclone -P sync ~/Cloud/ b2://neohomeBkt'
+alias c2='rclone -P sync b2://neohomeBkt ~/Cloud/'
+
+alias 2p='rclone -P sync ~/Public/ b2://neoPublicBkt'
+alias p2='rclone -P sync b2://neoPublicBkt ~/Public/'
+
+fullsync() {
+	echo -e "${GREEN} ☑ Upload to Pvt ${NC}";
+	2c;
+	echo -e "${GREEN} ☑ Download from Pvt ${NC}";
+	c2;
+	echo -e "${GREEN} ☑ Upload to Public ${NC}";
+	2p;
+	echo -e "${GREEN} ☑ Download from Pvt ${NC}";
+	p2;
+}
+
 alias du="ncdu -rr -x --exclude .git --exclude node_modules"
 
 alias fixtouch="xinput map-to-output 9 eDP-1"
@@ -163,11 +183,9 @@ lb() {
 # Get IP (call with myip)
 alias myip="curl http://ipecho.net/plain; echo"
 
-if [ -f /etc/bash_completion ]; then
- . /etc/bash_completion
-fi
 
-export PY_USER_BIN=$(python -c 'import site; print(site.USER_BASE + "/bin")')
+
+export PY_USER_BIN=$(python3 -c 'import site; print(site.USER_BASE + "/bin")')
 export PATH=$PY_USER_BIN:$PATH
 
 export NVM_DIR="$HOME/.nvm"
@@ -178,7 +196,7 @@ alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
 
 alias screenoff="sleep 1 ; xset dpms force off"
 
-alias t="clear; python ~/t/t.py --task-dir ~/Dropbox --list tasks"
+alias t="clear; python3 ~/t/t.py --task-dir ~/Dropbox --list tasks"
 function ta() {
     t "$1"
     t

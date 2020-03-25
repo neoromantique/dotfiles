@@ -3,13 +3,14 @@ general {
         interval = 5
 }
 
-order += "ethernet eth0"
+order += "ethernet enp37s0"
 order += "path_exists VPN"
 order += "load"
+order += "disk /"
 order += "tztime local"
-order += "tztime berlin"
+order += "tztime london"
 
-ethernet eth0 {
+ethernet enp37s0 {
         # if you use %speed, i3status requires the cap_net_admin capability
         format_up = "eth: %ip (%speed)"
         format_down = "eth"
@@ -45,9 +46,9 @@ tztime local {
         format = "Day: %d Local: %H:%M"
 }
 
-tztime berlin {
-        format = "HH: %H:%M"
-        timezone = "Europe/Berlin"
+tztime london {
+        format = "London: %H:%M"
+        timezone = "Europe/London"
 }
 
 load {
