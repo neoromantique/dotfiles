@@ -156,6 +156,8 @@ fullsync() {
 	p2;
 }
 
+alias makethumbs="find . -type f -iname \*.jpg -exec convert {} -resize 200x200\> -set filename:name '%t' '%[filename:name]_thumb.jpg' \;"
+
 alias du="ncdu -rr -x --exclude .git --exclude node_modules"
 
 alias fixtouch="xinput map-to-output 9 eDP-1"
