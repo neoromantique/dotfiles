@@ -152,7 +152,7 @@ bindsym $mod+k exec "/usr/bin/mocp -f"
 bindsym $mod+j exec "/usr/bin/mocp -r"
 
 #bindsym $super+l exec i3lock -i /home/david/Pictures/wall.png
-bindsym $super+l exec i3lock-fancy
+bindsym $super+l exec i3lock-fancy & sleep 1 && xset dpms force off
 # reload the configuration file
 #bindsym $mod+Shift+c reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
