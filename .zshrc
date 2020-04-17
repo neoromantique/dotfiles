@@ -4,11 +4,19 @@
 # Path to your oh-my-zsh installation.
 export ZSH="/home/david/.oh-my-zsh"
 
+export GOPATH=$HOME/gocode
+export PATH=$PATH:$GOPATH/bin:/home/david/Scripts
+
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
 ZSH_THEME="sunaku"
+
+alias j=jumpy
+alias ja=jumpy -a --as
+alias jd=jumpy -d
+
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -103,7 +111,7 @@ alias moc="mocp"
 alias mt="neomutt"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-alias scrot='scrot -s ~/Pictures/Screenshots/%b%d::%H%M%S.png'
+alias scrot='scrot -s ~/Pictures/Screenshots/%b%d%H%M%S.png'
 
 alias mem='smem -rk'
 
@@ -139,11 +147,11 @@ alias checkout='git checkout'
 alias master='git checkout master'
 alias blame='git log --graph --pretty=oneline --abbrev-commit'
 
-alias 2c='rclone -P sync ~/Cloud/ b2://neohomeBkt'
-alias c2='rclone -P sync b2://neohomeBkt ~/Cloud/'
+alias 2c='rclone -P -v --exclude "**/.thumbnail/**" sync ~/Cloud/ b2://neohomeBkt'
+alias c2='rclone -P -v --exclude "**/.thumbnail/**" sync b2://neohomeBkt ~/Cloud/'
 
-alias 2p='rclone -P sync ~/Public/ b2://neoPublicBkt'
-alias p2='rclone -P sync b2://neoPublicBkt ~/Public/'
+alias 2p='rclone -P -v --exclude "**/.thumbnail/**" sync ~/Public/ b2://neoPublicBkt'
+alias p2='rclone -P -v --exclude "**/.thumbnail/**" sync b2://neoPublicBkt ~/Public/'
 
 fullsync() {
 	echo -e "${GREEN} ☑ Upload to Pvt ${NC}";
