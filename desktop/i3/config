@@ -108,30 +108,32 @@ bindsym $mod+a focus parent
 #bindsym $mod+d focus child
 
 # switch to workspace
-bindsym $mod+1 workspace 1
-bindsym $mod+2 workspace 2
-bindsym $mod+3 workspace 3
-bindsym $mod+4 workspace 4
-bindsym $mod+5 workspace 5
-bindsym $mod+6 workspace 6
-bindsym $mod+7 workspace 7
-bindsym $mod+8 workspace 8
-bindsym $mod+9 workspace 9
+bindsym $mod+1 workspace firefox
+bindsym $mod+2 workspace local
+bindsym $mod+3 workspace remote
+bindsym $mod+4 workspace ide
+bindsym $mod+5 workspace debug
+bindsym $mod+6 workspace fs
+bindsym $mod+7 workspace archive
+bindsym $mod+8 workspace junk
+bindsym $mod+9 workspace track
 bindsym $mod+0 workspace 10
 bindsym $mod+c workspace tg
+bindsym $mod+x workspace media
 
 # move focused container to workspace
-bindsym $mod+Shift+1 move container to workspace 1
-bindsym $mod+Shift+2 move container to workspace 2
-bindsym $mod+Shift+3 move container to workspace 3
-bindsym $mod+Shift+4 move container to workspace 4
-bindsym $mod+Shift+5 move container to workspace 5
-bindsym $mod+Shift+6 move container to workspace 6
-bindsym $mod+Shift+7 move container to workspace 7
-bindsym $mod+Shift+8 move container to workspace 8
-bindsym $mod+Shift+9 move container to workspace 9
+bindsym $mod+Shift+1 move container to workspace firefox
+bindsym $mod+Shift+2 move container to workspace local
+bindsym $mod+Shift+3 move container to workspace remote
+bindsym $mod+Shift+4 move container to workspace ide
+bindsym $mod+Shift+5 move container to workspace debug
+bindsym $mod+Shift+6 move container to workspace fs
+bindsym $mod+Shift+7 move container to workspace archive
+bindsym $mod+Shift+8 move container to workspace junk
+bindsym $mod+Shift+9 move container to workspace track
 bindsym $mod+Shift+0 move container to workspace 10
 bindsym $mod+Shift+c move container to workspace tg
+bindsym $mod+Shift+x move container to workspace media
 
 bindsym --release Print exec scrot -s '/tmp/%F_%T_$wx$h.png' -e 'xclip -selection clipboard -target image/png -i $f' 
 
@@ -141,7 +143,10 @@ bindsym $mod+p exec "/usr/bin/mocp -G"
 bindsym $mod+k exec "/usr/bin/mocp -f"
 bindsym $mod+j exec "/usr/bin/mocp -r"
 
-bindsym $super+l exec i3lock -i /home/david/Pictures/wall.png
+# Force mpv to left-most screen
+for_window [class="mpv"] move to workspace media
+
+bindsym $super+l exec i3lock-fancy & sleep 1 && xset dpms force off
 # reload the configuration file
 bindsym $mod+Shift+t reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
