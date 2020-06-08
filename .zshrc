@@ -1,8 +1,7 @@
 export GOPATH=$HOME/gocode
 export PATH=$PATH:$GOPATH/bin:/home/david/Scripts
 
-PS1=$'[%{\e[0;33m%}%n%{\e[0m%}@%{\e[1;30m%}%M%{\e[0m%}|%B%d%b]$ '
-RPROMPT="(%D{%d.%m.%y} | %*) "    
+PS1=$'%{\e[0;93m%}%n%{\e[0m%}@%{\e[1;96m%}%M%{\e[0m%} %B%d%b | '
 
 alias j=jumpy
 alias ja=jumpy -a --as
