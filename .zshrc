@@ -11,7 +11,8 @@ export PATH=$PATH:$GOPATH/bin:/home/david/Scripts
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="sunaku"
+#ZSH_THEME="sunaku"
+ZSH_THEME="spaceship"
 
 alias j=jumpy
 alias ja=jumpy -a --as
@@ -220,3 +221,6 @@ function tf() {
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
 alias moc='mocp --theme=transparent-background'
+
+
+source "/home/david/.oh-my-zsh/custom/themes/spaceship.zsh-theme"
