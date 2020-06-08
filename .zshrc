@@ -4,8 +4,10 @@
 # Path to your oh-my-zsh installation.
 export ZSH="/home/david/.oh-my-zsh"
 
+export CHEST_DIR="$HOME/Cloud/.chest"
+
 export GOPATH=$HOME/gocode
-export PATH=$PATH:$GOPATH/bin:/home/david/Scripts
+export PATH=$PATH:$GOPATH/bin:/home/david/Scripts:/home/david/build/flutter/bin
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
@@ -17,6 +19,7 @@ alias j=jumpy
 alias ja=jumpy -a --as
 alias jd=jumpy -d
 
+alias disks="sudo fdisk -l | sed -e '/Disk \/dev\/loop/,+5d'"
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
