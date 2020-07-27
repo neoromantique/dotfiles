@@ -13,6 +13,8 @@ NC='\033[0m' # No Color
 alias moc="mocp"
 alias mt="neomutt"
 
+alias wacomMap="xsetwacom --set '14' MapToOutput HEAD-0"
+
 alias scrot='scrot -s ~/Pictures/Screenshots/%b%d%H%M%S.png'
 
 alias mem='smem -rk'

@@ -3,6 +3,12 @@
 GREEN='\033[0;32m'
 RESET='\033[0m'
 
+read -p "Install dependencies? [Ubuntu only]" -n 1 -r
+echo    
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+    sudo apt install curl vim silversearcher-ag nmap neofetch gdebi git ranger tig mycli pgcli fzf jq miller newsboat
+fi
 
 read -p "Delete old backups? " -n 1 -r
 echo    

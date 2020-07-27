@@ -13,7 +13,6 @@ EDITOR=vim
 #Thanks to http://bashrcgenerator.com/
 export PS1="\[\e[00;32m\]\u\[\e[0m\]\[\e[00;37m\]@\h:\[\e[0m\]\[\e[00;36m\][\[\e[0m\]\[\e[00;32m\]\w\[\e[0m\]\[\e[00;36m\]]\[\e[0m\]\[\e[00;37m\]\\$ \[\e[0m\]"
 
-
 #Aliases
 alias ls='ls -hF --color'    # add colors for filetype recognition
 alias la='ls -Al'        # show hidden files
@@ -118,3 +117,6 @@ PATH=$GOPATH/bin:$PATH
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
+
+eval "$(starship init bash)"
+[[ -s "/etc/profile.d/grc.bashrc" ]] && source /etc/profile.d/grc.bashrc
