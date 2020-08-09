@@ -64,6 +64,8 @@ set cm=blowfish
 " Shell
 autocmd FileType sh setlocal expandtab shiftwidth=4 tabstop=8 softtabstop=4
 
+autocmd FileType python setlocal tabstop=1 shiftwidth=1 expandtab number
+
 " Ruby
 autocmd FileType ruby setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
 
@@ -82,9 +84,15 @@ autocmd FileType make setlocal noexpandtab
 " JavaScript
 " autocmd BufRead,BufNewFile *.json setfiletype javascript
 autocmd FileType javascript setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
+
+let python_highlight_all = 1
+
 let javascript_enable_domhtmlcss=1
 let g:javascript_plugin_jsdoc = 1
 let g:javascript_plugin_ngdoc = 1
+
+filetype indent on
+set autoindent
 
 
 " Set 256 colour mode and Theme.
