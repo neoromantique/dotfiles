@@ -95,6 +95,7 @@ echo -e "vim-airline"
 echo -e "${GREEN} Please run :helptags on first run ${RESET}"
 
 git clone https://github.com/vim-airline/vim-airline ~/.vim/bundle/vim-airline &> /dev/null
+git clone git://github.com/digitaltoad/vim-pug.git &> /dev/null
 
 echo -e "${GREEN} nerdtree ${RESET}"
 
