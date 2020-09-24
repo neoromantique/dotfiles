@@ -19,7 +19,7 @@ font pango:monospace 8
 #exec feh --bg-fill /home/david/Pictures/Wallpapers/ellie_full.jpg
 exec feh --bg-fill /home/david/Pictures/wall.jpg
 exec setxkbmap -layout gb,ru -variant ,winkeys -option grp:caps_toggle,grp_led:scroll,terminate:ctrl_alt_bksp,compose:ralt
-
+exec dunst
 
 
 # This font is widely installed, provides lots of unicode glyphs, right-to-left
@@ -96,7 +96,7 @@ bindsym $mod+f fullscreen toggle
 
 for_window [title="^scratchpad$"] border 1pixel, floating enable, move scratchpad
 bindsym F1 [instance="scratchpad"] scratchpad show; sticky enable
-exec urxvt -name scratchpad -geometry 186x48
+exec urxvt -name scratchpad -geometry 120x80
 
 # change container layout (stacked, tabbed, toggle split)
 bindsym $mod+s layout stacking
@@ -190,19 +190,21 @@ bindsym $mod+r mode "resize"
 
 # Start i3bar to display a workspace bar (plus the system information i3status
 bar {
-	status_command i3blocks -c /home/david/dotfiles/i3blocks.conf </dev/null
+  status_command i3blocks -c /home/david/dotfiles/i3blocks.conf </dev/null
+
   colors {
-    separator #928374
-    background #333333
-    statusline #AAAAAA
-    focused_workspace #282828 #282828 #FFFFFF #FFFFFF
-    active_workspace #1d2021 #1d2021 #928374 #aea79f
-    inactive_workspace #333333 #333333 #AAAAAA #AAAAAA
-    urgent_workspace #cc241d #cc241d #ebdbb2 #ffffff
+	statusline #FFFFFF
+	background #000000
+			    #Border #Backgr #Font
+	focused_workspace  #000000 #FFFFFF #000000
+	active_workspace   #000000 #000000 #FFFFFF
+	inactive_workspace #000000 #000000 #FFFFFF
+	urgent_workspace   #000000 #CB4F29 #FFFFFF 
   }
 }
-
-client.focused #000000 #000000 #FFFFFF #000000
-client.focused_inactive #333333 #333333 #FFFFFF #000000
-client.unfocused #333333 #333333 #FFFFFF #333333
-client.urgent #cc241d #cc241d #ebdbb2 #282828
+# class                 border  backgr. text    indicator
+client.focused          #000000 #FFFFFF #000000 #FFFFFF
+client.focused_inactive #000000 #000000 #FFFFFF #000000
+client.unfocused        #000000 #000000 #FFFFFF #000000
+client.urgent           #000000 #000000 #ffffff #000000
+client.placeholder      #000000 #000000 #ffffff #000000

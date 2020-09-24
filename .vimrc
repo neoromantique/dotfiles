@@ -56,6 +56,31 @@ set noexpandtab
 " use blowfish for file encryption
 set cm=blowfish
 
+" vimwiki
+set nocompatible
+filetype plugin on
+" vimwiki stuff "
+" Run multiple wikis "
+let g:vimwiki_list = [
+                        \{'path': '~/b2_sync/Wiki/personal.wiki'},
+                        \{'path': '~/b2_sync/Wiki/tech.wiki'}
+                \]
+au BufRead,BufNewFile *.wiki set filetype=vimwiki
+autocmd FileType vimwiki map <F5> :VimwikiMakeDiaryNote<CR>
+function! ToggleCalendar()
+  execute ":Calendar"
+  if exists("g:calendar_open")
+    if g:calendar_open == 1
+      execute "q"
+      unlet g:calendar_open
+    else
+      g:calendar_open = 1
+    end
+  else
+    let g:calendar_open = 1
+  end
+endfunction
+autocmd FileType vimwiki map c :call ToggleCalendar()<CR>
 
 " ###############################
 " # Language Dependent settings #
@@ -97,6 +122,7 @@ set autoindent
 
 " Set 256 colour mode and Theme.
 set t_Co=256
-colorscheme mustang
+" colorscheme mustang
+colorscheme TrippingRobot
 
 

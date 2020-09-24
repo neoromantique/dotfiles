@@ -88,7 +88,10 @@ curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
 
 mkdir -p ~/.vim/plugin
 
-#wget "https://www.vim.org/scripts/download_script.php?src_id=26272" -O ~/.vim/plugin/switch.vim
+git clone https://github.com/vimwiki/vimwiki.git ~/.vim/bundle/vinwiki
+git clone git://github.com/mattn/calendar-vim ~/.vim/bundle/calendar-vim
+
+wget "https://www.vim.org/scripts/download_script.php?src_id=26272" -O ~/.vim/plugin/switch.vim
 
 echo -e "${GREEN} Installing Deps ${RESET}"
 echo -e "vim-airline"
@@ -102,8 +105,12 @@ echo -e "${GREEN} nerdtree ${RESET}"
 git clone https://github.com/scrooloose/nerdtree.git ~/.vim/bundle/nerdtree &> /dev/null
 
 echo -e "${GREEN} mustang colour theme ${RESET}" 
-git clone https://github.com/croaker/mustang-vim tmp/ &> /dev/null
-cp tmp/colors/mustang.vim ~/.vim/colors/
+mkdir -p tmp/
+git clone https://github.com/croaker/mustang-vim tmp/mustang &> /dev/null
+git clone git@github.com:qwelyt/TrippingRobot.git tmp/tr &> /dev/null
+
+cp tmp/mustang/colors/mustang.vim ~/.vim/colors/
+cp tmp/tr/colors/TrippingRobot.vim ~/.vim/colors/
 
 echo -e "${GREEN} clearning up ${RESET}" 
 
