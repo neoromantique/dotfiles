@@ -9,17 +9,57 @@
 " put this line first in ~/.vimrc
 set nocompatible | filetype indent plugin on | syn on
 
+
 set runtimepath^=~/.vim/bundle/ctrlp.vim
 let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standard']
+
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
+" let Vundle manage Vundle, required
+Plugin 'VundleVim/Vundle.vim'
+Plugin 'preservim/nerdtree'
+Plugin 'pangloss/vim-javascript'
+Plugin 'nathanaelkane/vim-indent-guides'
+Plugin 'jelera/vim-javascript-syntax'
+Plugin 'Xuyuanp/nerdtree-git-plugin'
+Plugin 'ryanoasis/vim-devicons'
+Plugin 'Raimondi/delimitMate'
+Plugin 'scrooloose/syntastic'
+Plugin 'marijnh/tern_for_vim'
+Plugin 'Valloric/YouCompleteMe'
+Plugin 'digitaltoad/vim-pug'
+Plugin 'ekalinin/Dockerfile.vim'
+Plugin 'godlygeek/tabular'
+Plugin 'airblade/vim-gitgutter'
+Plugin 'tpope/vim-fugitive'
+Plugin 'vim-airline/vim-airline'
+Plugin 'vimwiki/vimwiki'
+Plugin 'dNitro/vim-pug-complete'
+Plugin 'othree/html5.vim'
+call vundle#end()
+
+imap <C-c> <CR><Esc>O
+
+
+" This does what it says on the tin. It will check your file on open too, not
+" just on save.
+" " You might not want this, so just leave it out if you don't.
+let g:syntastic_check_on_open=1
+
+let g:ycm_add_preview_to_completeopt=0
+let g:ycm_confirm_extra_conf=0
+set completeopt-=preview
+
+" Scrooloose/syntastic settings 
+let g:syntastic_error_symbol = '✘'
+let g:syntastic_warning_symbol = "▲"
+
 
 " Turn syntax highlight on.
 syntax on
 
 "for future use.
 let mapleader = ","
-
-"Enable Pathongen
-execute pathogen#infect() 
 
 "Enable Airline
 set laststatus=2
@@ -35,6 +75,20 @@ set backup
 set backupdir=~/.vim/backup
 set directory=~/.vim/tmp
 set autochdir
+
+
+let g:NERDTreeGitStatusIndicatorMapCustom = {
+                \ 'Modified'  :'✹',
+                \ 'Staged'    :'✚',
+                \ 'Untracked' :'✭',
+                \ 'Renamed'   :'➜',
+                \ 'Unmerged'  :'═',
+                \ 'Deleted'   :'✖',
+                \ 'Dirty'     :'✗',
+                \ 'Ignored'   :'☒',
+                \ 'Clean'     :'✔︎',
+                \ 'Unknown'   :'?',
+                \ }
 
 " Make Vim highlight current line
 set cul                          
@@ -89,6 +143,7 @@ autocmd FileType vimwiki map c :call ToggleCalendar()<CR>
 " Shell
 autocmd FileType sh setlocal expandtab shiftwidth=4 tabstop=8 softtabstop=4
 
+" Python
 autocmd FileType python setlocal tabstop=1 shiftwidth=1 expandtab number
 
 " Ruby
@@ -116,7 +171,8 @@ let javascript_enable_domhtmlcss=1
 let g:javascript_plugin_jsdoc = 1
 let g:javascript_plugin_ngdoc = 1
 
-filetype indent on
+filetype plugin indent on
+
 set autoindent
 
 

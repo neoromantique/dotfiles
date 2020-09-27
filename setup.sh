@@ -87,8 +87,6 @@ mkdir -p ~/.vim/autoload ~/.vim/bundle && \
 curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
 
 mkdir -p ~/.vim/plugin
-
-git clone https://github.com/vimwiki/vimwiki.git ~/.vim/bundle/vinwiki
 git clone git://github.com/mattn/calendar-vim ~/.vim/bundle/calendar-vim
 
 wget "https://www.vim.org/scripts/download_script.php?src_id=26272" -O ~/.vim/plugin/switch.vim
