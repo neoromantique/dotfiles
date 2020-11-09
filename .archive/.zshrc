@@ -124,3 +124,5 @@ function tf() {
 export PATH="$PATH:$HOME/.rvm/bin"
 alias moc='mocp --theme=transparent-background'
 
+
+source /home/david/.config/broot/launcher/bash/br

@@ -13,20 +13,16 @@ set nocompatible | filetype indent plugin on | syn on
 set runtimepath^=~/.vim/bundle/ctrlp.vim
 let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standard']
 
+
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
 " let Vundle manage Vundle, required
 Plugin 'VundleVim/Vundle.vim'
 Plugin 'preservim/nerdtree'
-Plugin 'pangloss/vim-javascript'
 Plugin 'nathanaelkane/vim-indent-guides'
-Plugin 'jelera/vim-javascript-syntax'
 Plugin 'Xuyuanp/nerdtree-git-plugin'
 Plugin 'ryanoasis/vim-devicons'
 Plugin 'Raimondi/delimitMate'
-Plugin 'scrooloose/syntastic'
-Plugin 'marijnh/tern_for_vim'
-Plugin 'Valloric/YouCompleteMe'
 Plugin 'digitaltoad/vim-pug'
 Plugin 'ekalinin/Dockerfile.vim'
 Plugin 'godlygeek/tabular'
@@ -155,6 +151,9 @@ autocmd FileType php setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
 " X?HTML & XML
 autocmd FileType html,xhtml,xml setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
 
+" JS
+autocmd FileType javascript setlocal equalprg=js-beautify\ --stdin
+
 " CSS
 autocmd FileType css setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
 
@@ -168,8 +167,6 @@ autocmd FileType javascript setlocal expandtab shiftwidth=4 tabstop=4 softtabsto
 let python_highlight_all = 1
 
 let javascript_enable_domhtmlcss=1
-let g:javascript_plugin_jsdoc = 1
-let g:javascript_plugin_ngdoc = 1
 
 filetype plugin indent on
 

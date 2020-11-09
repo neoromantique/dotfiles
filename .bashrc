@@ -9,7 +9,6 @@
 #Exports
 EDITOR=vim
 
-
 #Thanks to http://bashrcgenerator.com/
 export PS1="\[\e[00;32m\]\u\[\e[0m\]\[\e[00;37m\]@\h:\[\e[0m\]\[\e[00;36m\][\[\e[0m\]\[\e[00;32m\]\w\[\e[0m\]\[\e[00;36m\]]\[\e[0m\]\[\e[00;37m\]\\$ \[\e[0m\]"
 
@@ -97,7 +96,7 @@ export NVM_DIR="$HOME/.nvm"
 # Yavide alias
 alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
 
-alias t="clear; python ~/t/t.py --task-dir ~/Dropbox --list tasks"
+alias t="clear; python ~/t/t.py --task-dir ~/b2_sync/t --list tasks"
 alias tw="t | grep 'verify'"
 
 function ta() {
@@ -124,3 +123,7 @@ export PATH="$PATH:$HOME/.rvm/bin"
 
 eval "$(starship init bash)"
 [[ -s "/etc/profile.d/grc.bashrc" ]] && source /etc/profile.d/grc.bashrc
+
+source /home/david/.config/broot/launcher/bash/br
+
+alias repl="NODE_PATH=$(npm root -g) node"

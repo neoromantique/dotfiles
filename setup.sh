@@ -17,23 +17,12 @@ then
 	echo -e "${GREEN} Wiping old backups ${RESET}"
 	rm -rf ~/.config/i3status~
 	rm -rf ~/.config/i3~
-        rm -rf ~/.vim~
+	rm -rf ~/.vim~
 	rm -f ~/.vimrc~
 	rm -f ~/.bashrc~
 	rm -f ~/.zshrc~
 	echo -e "${GREEN} Deleted old backups ${RESET}"
 fi
-
-read -n 1 -p "Is this desktop or laptop? (d/l/q) " ans;
-
-case $ans in
-    d|D)
-        PLATFORM='desktop';;
-    l|L)
-        PLATFORM='laptop';;
-    *)
-        exit;;
-esac
 
 echo -e "${GREEN} Backing Up and moving configs ${RESET}"
 
@@ -62,8 +51,8 @@ mkdir tmp/
 # obsolette for now
 # ln -rsf wmfsrc ~/.config/wmfs/wmfsrc
 
-ln -rsf ${PLATFORM}/i3/config ~/.config/i3/config
-ln -rsf ${PLATFORM}/i3status/config ~/.config/i3status/config
+ln -rsf i3/config ~/.config/i3/config
+ln -rsf i3status/config ~/.config/i3status/config
 
 ln -rsf .zshrc ~/.zshrc
 ln -rsf .bashrc ~/.bashrc
