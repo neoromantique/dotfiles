@@ -176,6 +176,6 @@ set autoindent
 " Set 256 colour mode and Theme.
 set t_Co=256
 " colorscheme mustang
-colorscheme TrippingRobot
+colorscheme desert
 
 

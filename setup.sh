@@ -87,9 +87,9 @@ echo -e "${GREEN} Please run :helptags on first run ${RESET}"
 git clone https://github.com/vim-airline/vim-airline ~/.vim/bundle/vim-airline &> /dev/null
 git clone git://github.com/digitaltoad/vim-pug.git &> /dev/null
 
-echo -e "${GREEN} nerdtree ${RESET}"
+echo -e "${GREEN} Vundle ${RESET}"
 
-git clone https://github.com/scrooloose/nerdtree.git ~/.vim/bundle/nerdtree &> /dev/null
+git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 
 echo -e "${GREEN} mustang colour theme ${RESET}" 
 mkdir -p tmp/

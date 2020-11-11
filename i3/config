@@ -20,6 +20,7 @@ font pango:monospace 8
 exec feh --bg-fill /home/david/Pictures/wall.jpg
 exec setxkbmap -layout gb,ru -variant ,winkeys -option grp:caps_toggle,grp_led:scroll,terminate:ctrl_alt_bksp,compose:ralt
 exec dunst
+exec xbindkeys
 exec pasystray
 
 
@@ -38,9 +39,13 @@ exec pasystray
 floating_modifier $mod
 
 # Pulse Audio controls
-bindsym XF86AudioRaiseVolume exec pactl set-sink-volume 0 +5% #increase sound volume
-bindsym XF86AudioLowerVolume exec pactl set-sink-volume 0 -5% #decrease sound volume
-bindsym XF86AudioMute exec pactl set-sink-mute 0 toggle # mute sound
+#bindsym XF86AudioRaiseVolume exec pactl set-sink-volume 0 +5% #increase sound volume
+#bindsym XF86AudioLowerVolume exec pactl set-sink-volume 0 -5% #decrease sound volume
+#bindsym XF86AudioMute exec pactl set-sink-mute 0 toggle # mute sound
+
+bindsym XF86AudioRaiseVolume exec amixer -D pulse sset Master 5%+ #increase sound volume
+bindsym XF86AudioLowerVolume exec amixer -D pulse sset Master 5%- #decrease sound volume
+bindsym XF86AudioMute exec amixer -D pulse set Master 1+ toggle # mute sound
 
 bindsym $super+bracketright exec pactl set-sink-volume 0 +5% #increase sound volume
 bindsym $super+bracketleft exec pactl set-sink-volume 0 -5% #decrease sound volume

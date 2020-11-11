@@ -56,6 +56,8 @@ alias checkout='git checkout'
 alias master='git checkout master'
 alias blame='git log --graph --pretty=oneline --abbrev-commit'
 
+alias did="vim +'normal Go' +'r!date' ~/did.txt"
+
 alias du="ncdu -rr -x --exclude .git --exclude node_modules"
 
 alias fixtouch="xinput map-to-output 9 eDP-1"
@@ -96,17 +98,20 @@ export NVM_DIR="$HOME/.nvm"
 # Yavide alias
 alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
 
-alias t="clear; python ~/t/t.py --task-dir ~/b2_sync/t --list tasks"
-alias tw="t | grep 'verify'"
+# alias t="clear; python ~/t/t.py --task-dir ~/b2_sync/t --list tasks"
+# alias tw="t | grep 'verify'"
 
-function ta() {
-    t "$1"
-    t
-}
-function tf() {
-    t -f "$1"
-    t
-}
+alias t="clear; todoist list --filter '(overdue | today | tomorrow) | p1'"
+
+
+# function ta() {
+#     t "$1"
+#     t
+# }
+# function tf() {
+#     t -f "$1"
+#     t
+# }
 
 
 # include .bashrc helpers if they exist (Non-Open Source helpers)
