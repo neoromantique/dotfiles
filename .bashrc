@@ -9,8 +9,12 @@
 #Exports
 EDITOR=vim
 
-#Thanks to http://bashrcgenerator.com/
-export PS1="\[\e[00;32m\]\u\[\e[0m\]\[\e[00;37m\]@\h:\[\e[0m\]\[\e[00;36m\][\[\e[0m\]\[\e[00;32m\]\w\[\e[0m\]\[\e[00;36m\]]\[\e[0m\]\[\e[00;37m\]\\$ \[\e[0m\]"
+
+getCurrentSKMKey() {
+  skm ls | grep -e '->' | awk '{print $2}'
+}
+
+export PS1='`date +'%H:%M'`:[\h]|\e[00;33m\]🔑`getCurrentSKMKey`\e[00;0m\]|`pwd` \n\[\e[00;32m\]\u\[\e[0m\]\[\e[00;37m\]$ '
 
 #Aliases
 alias ls='ls -hF --color'    # add colors for filetype recognition
@@ -21,8 +25,6 @@ alias cp='cp -i'            # ^
 alias mv='mv -i'            # ^
 alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
-
-alias joplin='/home/david/.joplin/Joplin.AppImage'
 
 alias ss='sshch'
 alias rtv='rtv --enable-media'
@@ -103,7 +105,6 @@ alias yavide="gvim --servername yavide -f -N -u /opt/yavide/.vimrc"
 
 alias t="clear; todoist list --filter '(overdue | today | tomorrow) | p1'"
 
-
 # function ta() {
 #     t "$1"
 #     t
@@ -126,7 +127,6 @@ PATH=$GOPATH/bin:$PATH
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
 
-eval "$(starship init bash)"
 [[ -s "/etc/profile.d/grc.bashrc" ]] && source /etc/profile.d/grc.bashrc
 
 source /home/david/.config/broot/launcher/bash/br

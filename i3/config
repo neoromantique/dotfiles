@@ -64,6 +64,7 @@ bindsym $mod+Shift+q kill
 #bindsym $mod+d exec dmenu_run
 bindsym $mod+d exec rofi -show run -modi run -theme Arc-Dark
 bindsym $mod+Shift+d exec rofi -show drun -modi run -show-icons -theme Arc-Dark
+bindsym F4 exec exec /home/david/dotfiles/scripts/rofi/rofi-openvpn.sh
 bindsym F3 exec rofi -modi ssh -show ssh -theme Arc-Dark
 bindsym F2 exec rofi -modi window -show window -theme Arc-Dark
 
