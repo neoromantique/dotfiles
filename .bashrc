@@ -132,3 +132,6 @@ export PATH="$PATH:$HOME/.rvm/bin"
 source /home/david/.config/broot/launcher/bash/br
 
 alias repl="NODE_PATH=$(npm root -g) node"
+
+# Scaleway CLI autocomplete initialization.
+eval "$(scw autocomplete script shell=bash)"

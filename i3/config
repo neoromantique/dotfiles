@@ -17,12 +17,12 @@ set $super Mod4
 font pango:monospace 8
 
 #exec feh --bg-fill /home/david/Pictures/Wallpapers/ellie_full.jpg
-exec feh --bg-fill /home/david/Pictures/wall.jpg
+exec feh --bg-fill /home/david/Pictures/wall.png
 exec setxkbmap -layout gb,ru -variant ,winkeys -option grp:caps_toggle,grp_led:scroll,terminate:ctrl_alt_bksp,compose:ralt
 exec dunst
 exec xbindkeys
 exec pasystray
-
+exec clipit
 
 # This font is widely installed, provides lots of unicode glyphs, right-to-left
 # text rendering and scalability on retina/hidpi displays (thanks to pango).
@@ -65,7 +65,7 @@ bindsym $mod+Shift+q kill
 bindsym $mod+d exec rofi -show run -modi run -theme Arc-Dark
 bindsym $mod+Shift+d exec rofi -show drun -modi run -show-icons -theme Arc-Dark
 bindsym F4 exec exec /home/david/dotfiles/scripts/rofi/rofi-openvpn.sh
-bindsym F3 exec rofi -modi ssh -show ssh -theme Arc-Dark
+bindsym F3 exec exec /home/david/dotfiles/scripts/rofi/rofi-ssh.sh
 bindsym F2 exec rofi -modi window -show window -theme Arc-Dark
 
 # There also is the (new) i3-dmenu-desktop which only displays applications
@@ -169,7 +169,8 @@ bindsym $mod+i exec "/usr/bin/mocp -r"
 # Force mpv to left-most screen
 for_window [class="mpv"] move to workspace media
 
-bindsym $super+l exec i3lock-fancy & sleep 1 && xset dpms force off
+bindsym $super+l exec i3lock -i /home/david/Pictures/wall.png & sleep 1 && xset dpms force off
+#bindsym $super+l exec i3lock & sleep 1 && xset dpms force off
 # reload the configuration file
 bindsym $mod+Shift+t reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
