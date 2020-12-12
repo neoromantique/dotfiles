@@ -135,3 +135,8 @@ alias repl="NODE_PATH=$(npm root -g) node"
 
 # Scaleway CLI autocomplete initialization.
 eval "$(scw autocomplete script shell=bash)"
+
+# Reset bg to black
+echo -e "\033]11;#000000\a"
+
+
