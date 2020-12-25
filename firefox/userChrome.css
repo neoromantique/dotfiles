@@ -1,37 +1,32 @@
- @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
- #back-button, #forward-button { display: none; } 
+#back-button, #forward-button { display: none; } 
 
 
- :root {
-	--uc-bg-color: #fff;
-	--uc-show-new-tab-button: none;
-	--uc-show-tab-separators: none;
-	--uc-tab-separators-color: none;
-	--uc-tab-separators-width: none;
-	--uc-tab-fg-color: #000;
-	--uc-mg-color: #F5F6F7;
+:root {
+   --uc-bg-color: #fff;
+   --uc-show-new-tab-button: none;
+   --uc-show-tab-separators: none;
+   --uc-tab-separators-color: none;
+   --uc-tab-separators-width: none;
+   --uc-tab-fg-color: #000;
+   --uc-mg-color: #F5F6F7;
 }
 /* Options with pixel amounts could need to be adjusted, as this only works for my laptop's display */
 #titlebar {
-	-moz-box-ordinal-group: 2 !important;
+   -moz-box-ordinal-group: 2 !important;
 }	
 #nav-bar {
-	margin-left: 0vw !important;
-}
-.titlebar-buttonbox-container {
-	-moz-box-ordinal-group: 1 !important;
-	background-color: rgb(50,50,52);
-	margin-top: 0px !important;
+   margin-left: 0vw !important;
 }
 #TabsToolbar {
-	min-height: 28px !important;
+   min-height: 28px !important;
 }
 #TabsToolbar > .toolbar-items {
-	margin-left: 0px !important;
+   margin-left: 0px !important;
 }
 .tabbrowser-tab:not([pinned]){
-	max-width: 100vw !important;
+   max-width: 100vw !important;
 }
 .tabbrowser-tab:not([fadein]),
 #page-action-buttons,
@@ -40,21 +35,13 @@
 #tracking-protection-icon-container, 
 #back-button, 
 #forward-button,
-#identity-box {
-	display: none !important;
-	border: none !important;
-}
-#urlbar-background, .titlebar-buttonbox-container, #nav-bar, .tab-background[selected="true"]{
-    background: var(--uc-bg-color) !important;
-	border: none !important;
-}
 #tabs-newtab-button {
-	display: none !important;
+   display: none !important;
 }
 .tab-close-button.close-icon {
-	display: none !important;
+   display: none !important;
 }
 #navigator-toolbox {
-	border-bottom: 0px solid red !important;
-	background: var(--uc-bg-color) !important;
+   border-bottom: 0px solid red !important;
+   background: var(--uc-bg-color) !important;
 }
