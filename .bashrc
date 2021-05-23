@@ -26,6 +26,8 @@ alias mv='mv -i'            # ^
 alias ..='cd ..'            # convinient navigation
 alias vi='vim'              # Also convinient
 
+alias lsblk='lsblk -o name,mountpoint,label,size,fstype,uuid | egrep -v "^loop"'
+
 alias ss='sshch'
 alias rtv='rtv --enable-media'
 
@@ -120,6 +122,9 @@ if [ -f $HOME/.bash_helpers ]; then
     . $HOME/.bash_helpers
 fi
 
+
+alias genpass="apg -a 1 -M lnc -n 9 -m 26"
+
 alias screen_record='bash screen_record.sh'
 export GOPATH=$HOME/go
 PATH=$GOPATH/bin:$PATH
@@ -128,8 +133,6 @@ PATH=$GOPATH/bin:$PATH
 export PATH="$PATH:$HOME/.rvm/bin"
 
 [[ -s "/etc/profile.d/grc.bashrc" ]] && source /etc/profile.d/grc.bashrc
-
-source /home/david/.config/broot/launcher/bash/br
 
 alias repl="NODE_PATH=$(npm root -g) node"
 

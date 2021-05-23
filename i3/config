@@ -14,7 +14,7 @@ set $super Mod4
 
 # Font for window titles. Will also be used by the bar unless a different font
 # is used in the bar {} block below.
-font pango:monospace 8
+font pango:monospace 10
 
 #exec feh --bg-fill /home/david/Pictures/Wallpapers/ellie_full.jpg
 exec feh --bg-fill /home/david/Pictures/wall.png
@@ -59,6 +59,8 @@ bindsym $mod+Return exec i3-sensible-terminal
 
 # kill focused window
 bindsym $mod+Shift+q kill
+bindsym $mod+Shift+w xdotool getwindowfocus windowkill
+
 
 # start dmenu (a program launcher)
 #bindsym $mod+d exec dmenu_run
@@ -110,7 +112,7 @@ bindsym $mod+f fullscreen toggle
 
 for_window [title="^scratchpad$"] border 1pixel, floating enable, move scratchpad
 bindsym F1 [instance="scratchpad"] scratchpad show; sticky enable
-exec urxvt -name scratchpad -geometry 200x50
+exec kitty --title scratchpad --name scratchpad
 
 # change container layout (stacked, tabbed, toggle split)
 bindsym $mod+s layout stacking
