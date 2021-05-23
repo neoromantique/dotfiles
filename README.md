@@ -1,3 +1,3 @@
-# ¯\_(ツ)_/¯ dotfiles
+# dotfiles
 
 ![Scrot](http://i.imgur.com/skv1LQe.png)
