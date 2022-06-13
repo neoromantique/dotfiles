@@ -7,7 +7,7 @@ read -p "Install dependencies? [Ubuntu only]" -n 1 -r
 echo    
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
-    sudo apt install curl vim silversearcher-ag nmap neofetch gdebi git ranger tig mycli pgcli fzf jq miller newsboat
+    sudo apt install curl vim silversearcher-ag nmap neofetch git ranger tig mycli fzf jq miller newsboat
 fi
 
 read -p "Delete old backups? " -n 1 -r
@@ -70,10 +70,10 @@ ln -rsf .vimrc ~/.vimrc
 #git clone https://github.com/neoclide/coc.nvim ~/.vim/pack/plugins/start/coc.nvim
 #cd ~/.vim/pack/plugins/start/coc.nvim && ./install.sh && yarn install --frozen-lockfile
 
-echo -e "${GREEN} Installing Pathogen ${RESET}"
+echo -e "${GREEN} Vundle ${RESET}"
 
 mkdir -p ~/.vim/autoload ~/.vim/bundle && \
-curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 
 mkdir -p ~/.vim/plugin
 git clone git://github.com/mattn/calendar-vim ~/.vim/bundle/calendar-vim
@@ -86,10 +86,6 @@ echo -e "${GREEN} Please run :helptags on first run ${RESET}"
 
 git clone https://github.com/vim-airline/vim-airline ~/.vim/bundle/vim-airline &> /dev/null
 git clone git://github.com/digitaltoad/vim-pug.git &> /dev/null
-
-echo -e "${GREEN} Vundle ${RESET}"
-
-git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 
 echo -e "${GREEN} mustang colour theme ${RESET}" 
 mkdir -p tmp/

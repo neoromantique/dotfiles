@@ -11,7 +11,12 @@ EDITOR=vim
 
 
 getCurrentSKMKey() {
-  skm ls | grep -e '->' | awk '{print $2}'
+    if ! command -v skm &> /dev/null
+    then
+     echo "none"
+    else
+        skm ls | grep -e '->' | awk '{print $2}'
+    fi
 }
 
 export PS1='`date +'%H:%M'`:[\h]|\e[00;33m\]🔑`getCurrentSKMKey`\e[00;0m\]|`pwd` \n\[\e[00;32m\]\u\[\e[0m\]\[\e[00;37m\]$ '
@@ -93,7 +98,7 @@ if [ -f /etc/bash_completion ]; then
  . /etc/bash_completion
 fi
 
-export PY_USER_BIN=$(python -c 'import site; print(site.USER_BASE + "/bin")')
+export PY_USER_BIN=$(python3 -c 'import site; print(site.USER_BASE + "/bin")')
 export PATH=$PY_USER_BIN:$PATH
 
 export NVM_DIR="$HOME/.nvm"
