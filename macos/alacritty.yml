@@ -1,0 +1,69 @@
+env:
+  TERM: xterm-256color
+  LANG: "en_US.UTF-8"
+
+key_bindings:
+  - {
+      key: Comma,
+      mods: Command,
+      command:
+        {
+          program: "sh",
+          args: ["-c", "open ~/.config/alacritty/alacritty.yml"],
+        },
+    }
+  - { key: N, mods: Command, action: SpawnNewInstance }
+  - { key: Space, mods: Alt, chars: " " }
+  - { key: Back, mods: Super, chars: "\x15" } # delete word/line
+  - { key: Left, mods: Alt, chars: "\x1bb" } # one word left
+  - { key: Right, mods: Alt, chars: "\x1bf" } # one word right
+  - { key: Left, mods: Command, chars: "\x1bOH" } # Home
+  - { key: Right, mods: Command, chars: "\x1bOF" } # End
+  - { key: PageUp, mods: Shift, action: ScrollPageUp }
+  - { key: PageDown, mods: Shift, action: ScrollPageDown }
+  - { key: End, mods: Shift, action: ScrollToBottom }
+  - { key: Home, mods: Shift, action: ScrollToTop }
+  - { key: End, mods: None, chars: "\x1bOF" }
+  - { key: Home, mods: None, chars: "\x1bOH" }
+
+# Font configuration
+font:
+  # Normal (roman) font face
+  normal:
+    family: "Menlo"
+    style: Regular
+  size: 15.0
+
+  use_thin_strokes: true
+
+# If `true`, bold text is drawn using the bright color variants.
+#draw_bold_text_with_bright_colors: true
+colors:
+  name: Cloud
+  author: ""
+  primary:
+    background: "#000000"
+    foreground: "#ffffff"
+  cursor:
+    text: "#000000"
+    cursor: "#ffffff"
+  normal:
+    black: "#222827"
+    red: "#d5a8e3"
+    green: "#9c75dd"
+    yellow: "#9898ae"
+    blue: "#654a96"
+    magenta: "#625566"
+    cyan: "#a9d1df"
+    white: "#e6ebe5"
+  bright:
+    black: "#5d6f74"
+    red: "#cd749c"
+    green: "#63b0b0"
+    yellow: "#c0c0dd"
+    blue: "#5786bc"
+    magenta: "#3f3442"
+    cyan: "#849da2"
+    white: "#d9d6cf"
+theme: Cloud
+
