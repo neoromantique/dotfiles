@@ -4,38 +4,37 @@
 " # david.aizenberg@paranoici.org# 
 " ################################
 
-" #Requirements: Pathogen, Airline, NERDTree, Mustang colour theme
-
 " put this line first in ~/.vimrc
 set nocompatible | filetype indent plugin on | syn on
 
-
-set runtimepath^=~/.vim/bundle/ctrlp.vim
 let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standard']
+let g:ctrlp_custom_ignore = 'node_modules\|DS_Store\|git'
 
+let g:tpipeline_statusline = '%!tpipeline#stl#line()'
 
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
-" let Vundle manage Vundle, required
 Plugin 'VundleVim/Vundle.vim'
+Plugin 'neoclide/coc.nvim'
 Plugin 'preservim/nerdtree'
 Plugin 'nathanaelkane/vim-indent-guides'
+"Plugin 'nvim-lualine/lualine.nvim'
+Plugin 'kyazdani42/nvim-web-devicons'
 Plugin 'Xuyuanp/nerdtree-git-plugin'
-Plugin 'ryanoasis/vim-devicons'
-Plugin 'Raimondi/delimitMate'
-Plugin 'digitaltoad/vim-pug'
+Plugin 'vim-airline/vim-airline'
+" Plugin 'ryanoasis/vim-devicons'
+"Plugin 'Raimondi/delimitMate'
 Plugin 'ekalinin/Dockerfile.vim'
-Plugin 'godlygeek/tabular'
+" Plugin 'godlygeek/tabular'
 Plugin 'airblade/vim-gitgutter'
 Plugin 'tpope/vim-fugitive'
-Plugin 'vim-airline/vim-airline'
-Plugin 'vimwiki/vimwiki'
-Plugin 'dNitro/vim-pug-complete'
-Plugin 'othree/html5.vim'
+" Plugin 'vimwiki/vimwiki'
+Plugin 'ctrlpvim/ctrlp.vim'
 call vundle#end()
 
-imap <C-c> <CR><Esc>O
+let g:copilot_assume_mapped = v:true
 
+imap <C-c> <CR><Esc>O
 
 " This does what it says on the tin. It will check your file on open too, not
 " just on save.
@@ -50,16 +49,11 @@ set completeopt-=preview
 let g:syntastic_error_symbol = '✘'
 let g:syntastic_warning_symbol = "▲"
 
-
 " Turn syntax highlight on.
 syntax on
 
 "for future use.
 let mapleader = ","
-
-"Enable Airline
-set laststatus=2
-let g:airline_powerline_fonts = 1 
 
 "autocmd VimEnter * NERDTree
 
@@ -103,35 +97,6 @@ set autoindent                  " set the cursor at same indent as line above
 set smartindent                 " try to be smart about indenting (C-style)
 set noexpandtab
 
-" use blowfish for file encryption
-set cm=blowfish
-
-" vimwiki
-set nocompatible
-filetype plugin on
-" vimwiki stuff "
-" Run multiple wikis "
-let g:vimwiki_list = [
-                        \{'path': '~/b2_sync/Wiki/personal.wiki'},
-                        \{'path': '~/b2_sync/Wiki/tech.wiki'}
-                \]
-au BufRead,BufNewFile *.wiki set filetype=vimwiki
-autocmd FileType vimwiki map <F5> :VimwikiMakeDiaryNote<CR>
-function! ToggleCalendar()
-  execute ":Calendar"
-  if exists("g:calendar_open")
-    if g:calendar_open == 1
-      execute "q"
-      unlet g:calendar_open
-    else
-      g:calendar_open = 1
-    end
-  else
-    let g:calendar_open = 1
-  end
-endfunction
-autocmd FileType vimwiki map c :call ToggleCalendar()<CR>
-
 " ###############################
 " # Language Dependent settings #
 " ###############################
@@ -141,6 +106,8 @@ autocmd FileType sh setlocal expandtab shiftwidth=4 tabstop=8 softtabstop=4
 
 " Python
 autocmd FileType python setlocal tabstop=1 shiftwidth=1 expandtab number
+
+autocmd FileType python map <buffer> <F9> :w<CR>:exec '!python3' shellescape(@%, 1)<CR>
 
 " Ruby
 autocmd FileType ruby setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
@@ -153,6 +120,8 @@ autocmd FileType html,xhtml,xml setlocal expandtab shiftwidth=2 tabstop=2 softta
 
 " JS
 autocmd FileType javascript setlocal equalprg=js-beautify\ --stdin
+
+autocmd FileType javascript map <buffer> <F9> :w<CR>:exec '!node' shellescape(@%, 1)<CR>
 
 " CSS
 autocmd FileType css setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
@@ -175,7 +144,6 @@ set autoindent
 
 " Set 256 colour mode and Theme.
 set t_Co=256
-" colorscheme mustang
-colorscheme desert
-
+colorscheme mustang
+" colorscheme desert
 

@@ -7,8 +7,9 @@
 
 
 #Exports
-EDITOR=vim
+EDITOR=nvim
 
+alias vim='nvim'
 
 getCurrentSKMKey() {
     if ! command -v skm &> /dev/null
@@ -88,7 +89,7 @@ curl -4 http://wttr.in/$1
 # Idea taken from: https://news.ycombinator.com/item?id=17064520
 
 lb() {
-    vim ~/Dropbox/logbooks/$(date '+%d-%m-%Y').md 
+    vim ~/Dropbox/logbooks/$(date '+%Y-%m-%d').md 
 } 
 
 # Get IP (call with myip)
