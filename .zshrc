@@ -1,72 +1,80 @@
-# Start configuration added by Zim install {{{
-#
-# User configuration sourced by interactive shells
-#
 
-# -----------------
-# Zsh configuration
-# -----------------
+ ################################
+ # 2022. WTFPL.                 #
+ # .zshrc of David Aizenberg    #
+ # david.aizenberg@paranoici.org# 
+ ################################
 
-#
-# History
-#
+
+#Exports
+EDITOR=nvim
+
+alias vim='nvim'
+
+alias ls='ls -hF --color'   # add colors for filetype recognition
+alias la='ls -Al'           # show hidden files
+alias tree='tree -Cs'       # nice alternative to 'ls'
+alias rm='rm -i'            # better safe than sorry.
+alias cp='cp -i'            # ^
+alias mv='mv -i'            # ^
+alias ..='cd ..'            # convenience
+alias vi='vim'              # It ain't 1977 anymore
+
+alias lsblk='lsblk -o name,mountpoint,label,size,fstype,uuid | egrep -v "^loop"'
+
+alias ports='sudo netstat -nape --inet'  #Network mon.
+alias opennet='lsof -i'
+alias ping4='ping -c 4'
+alias ns='sudo netstat -alnp --protocol=inet'
+
+alias did="vim +'normal Go' +'r!date' ~/did.txt"
+
+alias genpass="apg -a 1 -M lnc -n 9 -m 26"
+alias repl="NODE_PATH=$(npm root -g) node"
+
+# Scaleway CLI autocomplete initialization.
+eval "$(scw autocomplete script shell=bash)"
+
+
+export GOPATH=$HOME/go
+PATH=$GOPATH/bin:$PATH
+
+source /etc/profile.d/go.sh
+
+
+# Generated for envman. Do not edit.
+[ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
+
+
+# Logbook 
+# Idea taken from: https://news.ycombinator.com/item?id=17064520
+lb() {
+    vim ~/Dropbox/logbooks/$(date '+%Y-%m-%d').md 
+} 
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+export PY_USER_BIN=$(python3 -c 'import site; print(site.USER_BASE + "/bin")')
+export PATH=$PY_USER_BIN:$PATH
+
+
+# ZIM Default Config
 
 # Remove older command from the history if a duplicate is to be added.
 setopt HIST_IGNORE_ALL_DUPS
-
-#
-# Input/output
-#
 
 # Set editor default keymap to emacs (`-e`) or vi (`-v`)
 bindkey -e
 
 # Prompt for spelling correction of commands.
-#setopt CORRECT
-
-# Customize spelling correction prompt.
-#SPROMPT='zsh: correct %F{red}%R%f to %F{green}%r%f [nyae]? '
+setopt CORRECT
 
 # Remove path separator from WORDCHARS.
 WORDCHARS=${WORDCHARS//[\/]}
 
-# -----------------
-# Zim configuration
-# -----------------
-
-# Use degit instead of git as the default tool to install and update modules.
-#zstyle ':zim:zmodule' use 'degit'
-
-# --------------------
-# Module configuration
-# --------------------
-
-#
-# git
-#
-
 # Set a custom prefix for the generated aliases. The default prefix is 'G'.
-#zstyle ':zim:git' aliases-prefix 'g'
-
-#
-# input
-#
-
-# Append `../` to your input for each `.` you type after an initial `..`
-#zstyle ':zim:input' double-dot-expand yes
-
-#
-# termtitle
-#
-
-# Set a custom terminal title format using prompt expansion escape sequences.
-# See http://zsh.sourceforge.net/Doc/Release/Prompt-Expansion.html#Simple-Prompt-Escapes
-# If none is provided, the default '%n@%m: %~' is used.
-#zstyle ':zim:termtitle' format '%1~'
-
-#
-# zsh-autosuggestions
-#
+zstyle ':zim:git' aliases-prefix 'g'
 
 # Disable automatic widget re-binding on each precmd. This can be set when
 # zsh-users/zsh-autosuggestions is the last module in your ~/.zimrc.
@@ -76,22 +84,8 @@ ZSH_AUTOSUGGEST_MANUAL_REBIND=1
 # See https://github.com/zsh-users/zsh-autosuggestions/blob/master/README.md#suggestion-highlight-style
 #ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=242'
 
-#
-# zsh-syntax-highlighting
-#
-
-# Set what highlighters will be used.
-# See https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters.md
-ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
-
-# Customize the main highlighter styles.
-# See https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters/main.md#how-to-tweak-it
-#typeset -A ZSH_HIGHLIGHT_STYLES
-#ZSH_HIGHLIGHT_STYLES[comment]='fg=242'
-
-# ------------------
-# Initialize modules
-# ------------------
+# https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters.md
+ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
 
 ZIM_HOME=${ZDOTDIR:-${HOME}}/.zim
 # Download zimfw plugin manager if missing.
