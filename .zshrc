@@ -32,10 +32,6 @@ alias did="vim +'normal Go' +'r!date' ~/did.txt"
 alias genpass="apg -a 1 -M lnc -n 9 -m 26"
 alias repl="NODE_PATH=$(npm root -g) node"
 
-# Scaleway CLI autocomplete initialization.
-eval "$(scw autocomplete script shell=bash)"
-
-
 export GOPATH=$HOME/go
 PATH=$GOPATH/bin:$PATH
 
@@ -53,7 +49,6 @@ lb() {
 } 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 export PY_USER_BIN=$(python3 -c 'import site; print(site.USER_BASE + "/bin")')
 export PATH=$PY_USER_BIN:$PATH
@@ -66,9 +61,6 @@ setopt HIST_IGNORE_ALL_DUPS
 
 # Set editor default keymap to emacs (`-e`) or vi (`-v`)
 bindkey -e
-
-# Prompt for spelling correction of commands.
-setopt CORRECT
 
 # Remove path separator from WORDCHARS.
 WORDCHARS=${WORDCHARS//[\/]}
