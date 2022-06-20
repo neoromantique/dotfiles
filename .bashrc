@@ -135,6 +135,8 @@ alias screen_record='bash screen_record.sh'
 export GOPATH=$HOME/go
 PATH=$GOPATH/bin:$PATH
 
+source /etc/profile.d/go.sh
+
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
 
@@ -148,4 +150,8 @@ eval "$(scw autocomplete script shell=bash)"
 # Reset bg to black
 echo -e "\033]11;#000000\a"
 
+
+
+# Generated for envman. Do not edit.
+[ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
 
