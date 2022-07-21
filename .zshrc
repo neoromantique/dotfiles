@@ -30,12 +30,31 @@ alias ns='sudo netstat -alnp --protocol=inet'
 alias did="vim +'normal Go' +'r!date' ~/did.txt"
 
 alias genpass="apg -a 1 -M lnc -n 9 -m 26"
-alias repl="NODE_PATH=$(npm root -g) node"
 
 export GOPATH=$HOME/go
 PATH=$GOPATH/bin:$PATH
 
 source /etc/profile.d/go.sh
+source ~/.private.env
+
+export PATH="${PATH}:${HOME}/.krew/bin"
+
+alias ktx='kubectx'
+alias knx='kubens'
+
+setopt no_flow_control
+function fzf-ssh () {
+  local selected_host=$(grep "Host " ~/.ssh/config | grep -v '*' | cut -b 6- | fzf --query "$LBUFFER" --prompt="SSH Remote > ")
+
+  if [ -n "$selected_host" ]; then
+    BUFFER="ssh ${selected_host}"
+    zle accept-line
+  fi
+  zle reset-prompt
+}
+
+zle -N fzf-ssh
+bindkey '^o' fzf-ssh
 
 
 # Generated for envman. Do not edit.
@@ -53,6 +72,7 @@ export NVM_DIR="$HOME/.nvm"
 export PY_USER_BIN=$(python3 -c 'import site; print(site.USER_BASE + "/bin")')
 export PATH=$PY_USER_BIN:$PATH
 
+alias repl="NODE_PATH=$(npm root -g) node"
 
 # ZIM Default Config
 
@@ -114,3 +134,7 @@ for key ('j') bindkey -M vicmd ${key} history-substring-search-down
 unset key
 # }}} End configuration added by Zim install
 
+
+
+# Scaleway CLI autocomplete initialization.
+eval "$(scw autocomplete script shell=zsh)"
