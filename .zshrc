@@ -47,7 +47,8 @@ function fzf-ssh () {
   local selected_host=$(grep "Host " ~/.ssh/config | grep -v '*' | cut -b 6- | fzf --query "$LBUFFER" --prompt="SSH Remote > ")
 
   if [ -n "$selected_host" ]; then
-    BUFFER="ssh ${selected_host}"
+    tmux rename-window "Remote -- $selected_host"
+    BUFFER="ssh ${selected_host} ; tmux rename-window dc"
     zle accept-line
   fi
   zle reset-prompt
