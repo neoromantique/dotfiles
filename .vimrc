@@ -17,6 +17,8 @@ call vundle#begin()
 Plugin 'VundleVim/Vundle.vim'
 Plugin 'neoclide/coc.nvim'
 Plugin 'preservim/nerdtree'
+Plugin 'nvim-lua/plenary.nvim'
+Plugin 'jose-elias-alvarez/null-ls.nvim'
 Plugin 'nathanaelkane/vim-indent-guides'
 "Plugin 'nvim-lualine/lualine.nvim'
 Plugin 'kyazdani42/nvim-web-devicons'
@@ -92,7 +94,7 @@ nnoremap <F5> "=strftime("%I:%M %p %a %d/%m/%Y")<CR>p
 inoremap <F5> <C-R>=strftime("%I:%M %p %a %d/%m/%Y")<CR>
 
 "set list                        " show invisible characters
-"set mouse=a                     " try to use a mouse in the console (wimp!)
+set mouse=a                     " try to use a mouse in the console (wimp!)
 set autoindent                  " set the cursor at same indent as line above
 set smartindent                 " try to be smart about indenting (C-style)
 set noexpandtab

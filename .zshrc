@@ -9,6 +9,9 @@
 #Exports
 EDITOR=nvim
 
+# Set Terminal Background so I know I'm SSH'd
+echo -e "\033]11;#141414\a"
+
 alias vim='nvim'
 
 alias ls='ls -hF --color'   # add colors for filetype recognition
@@ -32,7 +35,7 @@ alias did="vim +'normal Go' +'r!date' ~/did.txt"
 alias genpass="apg -a 1 -M lnc -n 9 -m 26"
 
 export GOPATH=$HOME/go
-PATH=$GOPATH/bin:$PATH
+PATH=$GOPATH/bin:/home/neo/mongoClient::$PATH
 
 source /etc/profile.d/go.sh
 source ~/.private.env
@@ -43,6 +46,11 @@ alias ktx='kubectx'
 alias knx='kubens'
 
 setopt no_flow_control
+function rename() {
+    echo "Renaming window to $1"
+    tmux rename-window $1
+}
+
 function fzf-ssh () {
   local selected_host=$(grep "Host " ~/.ssh/config | grep -v '*' | cut -b 6- | fzf --query "$LBUFFER" --prompt="SSH Remote > ")
 
@@ -139,3 +147,19 @@ unset key
 
 # Scaleway CLI autocomplete initialization.
 eval "$(scw autocomplete script shell=zsh)"
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/neo/micromamba/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/neo/micromamba/etc/profile.d/conda.sh" ]; then
+        . "/home/neo/micromamba/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/neo/micromamba/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+

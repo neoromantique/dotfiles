@@ -155,3 +155,36 @@ echo -e "\033]11;#000000\a"
 # Generated for envman. Do not edit.
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
 
+
+# >>> mamba initialize >>>
+# !! Contents within this block are managed by 'mamba init' !!
+export MAMBA_EXE="/home/neo/.micromamba/bin/micromamba";
+export MAMBA_ROOT_PREFIX="/home/neo/micromamba";
+__mamba_setup="$('/home/neo/.micromamba/bin/micromamba' shell hook --shell bash --prefix '/home/neo/micromamba' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__mamba_setup"
+else
+    if [ -f "/home/neo/micromamba/etc/profile.d/micromamba.sh" ]; then
+        . "/home/neo/micromamba/etc/profile.d/micromamba.sh"
+    else
+        export  PATH="/home/neo/micromamba/bin:$PATH"  # extra space after export prevents interference from conda init
+    fi
+fi
+unset __mamba_setup
+# <<< mamba initialize <<<
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/neo/micromamba/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/neo/micromamba/etc/profile.d/conda.sh" ]; then
+        . "/home/neo/micromamba/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/neo/micromamba/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
