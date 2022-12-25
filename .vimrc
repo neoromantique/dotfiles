@@ -32,6 +32,7 @@ Plugin 'airblade/vim-gitgutter'
 Plugin 'tpope/vim-fugitive'
 " Plugin 'vimwiki/vimwiki'
 Plugin 'ctrlpvim/ctrlp.vim'
+Plugin 'LnL7/vim-nix'
 call vundle#end()
 
 let g:copilot_assume_mapped = v:true

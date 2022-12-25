@@ -45,6 +45,8 @@ export PATH="${PATH}:${HOME}/.krew/bin"
 alias ktx='kubectx'
 alias knx='kubens'
 
+alias doom="~/.emacs.d/bin/doom"
+
 setopt no_flow_control
 function rename() {
     echo "Renaming window to $1"
@@ -162,4 +164,7 @@ else
 fi
 unset __conda_setup
 # <<< conda initialize <<<
+
+# Init Jump
+eval "$(jump shell)"
 
