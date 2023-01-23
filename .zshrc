@@ -1,6 +1,6 @@
 
  ################################
- # 2022. WTFPL.                 #
+ # WTFPL.                       #
  # .zshrc of David Aizenberg    #
  # david.aizenberg@paranoici.org# 
  ################################
@@ -62,6 +62,12 @@ function fzf-ssh () {
     zle accept-line
   fi
   zle reset-prompt
+}
+
+# src: https://stackoverflow.com/a/59412853
+function seecert () {
+  nslookup $1
+  (openssl s_client -showcerts -servername $1 -connect $1:443 <<< "Q" | openssl x509 -text | grep -iA2 "Validity")
 }
 
 zle -N fzf-ssh
