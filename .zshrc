@@ -42,8 +42,8 @@ source ~/.private.env
 
 export PATH="${PATH}:${HOME}/.krew/bin"
 
-alias ktx='kubectx'
-alias knx='kubens'
+alias ktx='kubectl-ctx'
+alias knx='kubectl-ns'
 
 alias doom="~/.emacs.d/bin/doom"
 
