@@ -1,0 +1,27 @@
+# Autostart applications
+# Device: {{ .deviceProfile }}
+
+# Polkit agent (GUI password prompts)
+exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+
+# System tray & bar
+exec-once = nm-applet &
+exec-once = waybar
+
+# Notifications
+exec-once = swaync
+
+# Wallpaper & idle
+exec-once = hyprpaper
+exec-once = hypridle
+
+# Clipboard
+exec-once = copyq --start-server
+
+{{- if eq .deviceProfile "desktop" }}
+# Desktop: Hyprland plugins
+exec-once = hyprpm reload -n
+{{- else }}
+# Laptop: Power management
+exec-once = power-profiles-daemon || true
+{{- end }}

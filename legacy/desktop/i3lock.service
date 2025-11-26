@@ -1,0 +1,13 @@
+[Unit]
+Description=Starts i3lock at suspend time
+Before=sleep.target
+
+[Service]
+User=david
+Type=forking
+Environment=DISPLAY=:0
+ExecStartPre=
+ExecStart=i3lock -i /home/david/Pictures/wall.png
+
+[Install]
+WantedBy=sleep.target

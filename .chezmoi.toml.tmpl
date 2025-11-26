@@ -1,0 +1,57 @@
+{{- /* Detect hostname and suggest default profile */ -}}
+{{- $hostname := .chezmoi.hostname -}}
+{{- $defaultProfile := "desktop" -}}
+{{- if eq $hostname "box" -}}
+{{-   $defaultProfile = "desktop" -}}
+{{- else if eq $hostname "bluefin" -}}
+{{-   $defaultProfile = "laptop" -}}
+{{- end -}}
+
+{{- /* Prompt for device profile */ -}}
+{{- $deviceProfile := promptStringOnce . "deviceProfile" (printf "Device profile (desktop/laptop) [%s]" $defaultProfile) -}}
+{{- if eq $deviceProfile "" -}}
+{{-   $deviceProfile = $defaultProfile -}}
+{{- end -}}
+
+{{- /* Detect distro */ -}}
+{{- $distro := "unknown" -}}
+{{- if stat "/etc/arch-release" -}}
+{{-   $distro = "arch" -}}
+{{- else if lookPath "rpm-ostree" -}}
+{{-   $distro = "fedora-atomic" -}}
+{{- else if stat "/etc/fedora-release" -}}
+{{-   $distro = "fedora" -}}
+{{- end -}}
+
+{{- /* Prompt for secrets path */ -}}
+{{- $secretsPath := promptStringOnce . "secretsPath" "Path to secrets directory [~/secrets]" -}}
+{{- if eq $secretsPath "" -}}
+{{-   $secretsPath = "~/secrets" -}}
+{{- end -}}
+
+[data]
+    deviceProfile = {{ $deviceProfile | quote }}
+    hostname = {{ $hostname | quote }}
+    distro = {{ $distro | quote }}
+    secretsPath = {{ $secretsPath | quote }}
+
+    # Device-specific configuration
+    {{- if eq $deviceProfile "desktop" }}
+    primaryMonitor = "DP-1"
+    secondaryMonitor = "DP-2"
+    primaryResolution = "2560x1440@165"
+    secondaryResolution = "2560x1440@60"
+    hasMultipleMonitors = true
+    hasTouchpad = false
+    hasBattery = false
+    idleTimeout = 300
+    {{- else if eq $deviceProfile "laptop" }}
+    primaryMonitor = "eDP-1"
+    secondaryMonitor = ""
+    primaryResolution = "preferred"
+    secondaryResolution = ""
+    hasMultipleMonitors = false
+    hasTouchpad = true
+    hasBattery = true
+    idleTimeout = 180
+    {{- end }}

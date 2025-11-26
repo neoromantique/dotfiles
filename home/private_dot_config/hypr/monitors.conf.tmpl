@@ -1,0 +1,21 @@
+# Monitor Configuration
+# Device: {{ .deviceProfile }} ({{ .hostname }})
+
+{{- if eq .deviceProfile "desktop" }}
+# Desktop dual-monitor setup
+# Primary: {{ .primaryMonitor }} at {{ .primaryResolution }}
+monitor = {{ .primaryMonitor }},{{ .primaryResolution }},0x0,1
+
+{{- if .secondaryMonitor }}
+# Secondary: {{ .secondaryMonitor }} at {{ .secondaryResolution }}
+# Positioned to the right of primary
+monitor = {{ .secondaryMonitor }},{{ .secondaryResolution }},2560x0,1
+{{- end }}
+
+{{- else }}
+# Laptop single monitor
+monitor = {{ .primaryMonitor }},{{ .primaryResolution }},auto,1
+
+# External displays (when docked)
+monitor = ,preferred,auto,1
+{{- end }}

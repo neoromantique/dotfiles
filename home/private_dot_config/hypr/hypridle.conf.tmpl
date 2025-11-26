@@ -1,0 +1,30 @@
+# Hypridle Configuration
+# Device: {{ .deviceProfile }} ({{ .hostname }})
+# Idle timeout: {{ .idleTimeout }} seconds
+
+general {
+    lock_cmd = pidof hyprlock || hyprlock
+    before_sleep_cmd = loginctl lock-session
+    after_sleep_cmd = hyprctl dispatch dpms on
+}
+
+listener {
+    timeout = {{ .idleTimeout }}
+    on-timeout = hyprctl dispatch dpms off
+    on-resume = hyprctl dispatch dpms on
+}
+
+{{- if .hasBattery }}
+# Laptop: dim screen before turning off
+listener {
+    timeout = {{ sub .idleTimeout 60 }}
+    on-timeout = brightnessctl -s set 30%
+    on-resume = brightnessctl -r
+}
+
+# Laptop: suspend after extended idle
+listener {
+    timeout = {{ mul .idleTimeout 2 }}
+    on-timeout = systemctl suspend
+}
+{{- end }}

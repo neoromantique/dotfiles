@@ -1,0 +1,124 @@
+// -*- mode: jsonc -*-
+// Device: {{ .deviceProfile }} ({{ .hostname }})
+{
+  "height": 30,
+  "spacing": 6,
+{{- if eq .deviceProfile "desktop" }}
+  "output": ["{{ .primaryMonitor }}"],
+{{- end }}
+  "position": "bottom",
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": [],
+  "modules-right": [
+    "custom/vpn",
+    "pulseaudio#spk",
+    "pulseaudio#mic",
+    "network",
+{{- if .hasBattery }}
+    "battery",
+    "backlight",
+{{- end }}
+    "cpu",
+    "memory",
+    "clock",
+    "tray"
+  ],
+
+  "hyprland/workspaces": {
+    "disable-scroll": true,
+    "warp-on-scroll": false,
+    "show-special": true,
+    "sort-by": "id",
+    "format": "{name}",
+    "on-scroll-up": "hyprctl dispatch workspace e+1",
+    "on-scroll-down": "hyprctl dispatch workspace e-1",
+    "ignore-workspaces": ["(special:)?chrome-sharing-indicator"],
+    "format-icons": {
+      "1": "WEB",
+      "2": "CODE",
+      "3": "TERM",
+      "4": "IDE",
+      "5": "VM",
+      "6": "GFX",
+      "7": "DOC",
+      "8": "GAME",
+      "9": "MISC",
+      "10": "TMP",
+      "special:termius": "s:term",
+      "special:org": "s:org",
+      "special:llm": "s:llm",
+      "default": "WS"
+    }
+  },
+
+  "hyprland/window": {
+    "format": "{title}",
+    "max-length": 60
+  },
+
+  "pulseaudio#spk": {
+    "scroll-step": 2,
+    "format": "VOL {volume}%",
+    "format-muted": "VOL muted",
+    "on-click": "pavucontrol -t 3",
+    "on-click-right": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
+    "on-scroll-up": "~/.config/hypr/scripts/scroll-audio-sink.sh up",
+    "on-scroll-down": "~/.config/hypr/scripts/scroll-audio-sink.sh down"
+  },
+
+  "pulseaudio#mic": {
+    "scroll-step": 2,
+    "format": "{format_source}",
+    "format-source": "MIC {volume}%",
+    "format-source-muted": "MIC muted",
+    "on-click": "pavucontrol -t 4",
+    "on-click-right": "pactl set-source-mute @DEFAULT_SOURCE@ toggle",
+    "on-scroll-up": "pactl set-source-volume @DEFAULT_SOURCE@ +2%",
+    "on-scroll-down": "pactl set-source-volume @DEFAULT_SOURCE@ -2%"
+  },
+
+  "network": {
+    "format-wifi": "NET wifi {essid} {signalStrength}%",
+    "format-ethernet": "NET eth {ipaddr}",
+    "format-linked": "NET link",
+    "format-disconnected": "NET down",
+    "tooltip-format": "{ifname} via {gwaddr}"
+  },
+
+{{- if .hasBattery }}
+  "battery": {
+    "format": "BAT {capacity}%",
+    "format-charging": "BAT+ {capacity}%",
+    "format-plugged": "BAT= {capacity}%",
+    "format-full": "BAT full",
+    "states": {
+      "warning": 30,
+      "critical": 15
+    }
+  },
+
+  "backlight": {
+    "format": "BRT {percent}%",
+    "on-scroll-up": "brightnessctl s 5%+",
+    "on-scroll-down": "brightnessctl s 5%-"
+  },
+{{- end }}
+
+  "cpu": { "format": "CPU {usage}%", "interval": 5, "tooltip": false },
+  "memory": { "format": "MEM {}%", "interval": 5 },
+
+  "clock": {
+    "format": "TIME {:%Y-%m-%d %H:%M}",
+    "tooltip-format": "<tt>{calendar}</tt>",
+    "interval": 60
+  },
+
+  "tray": { "spacing": 4 },
+
+  "custom/vpn": {
+    "exec": "~/.config/waybar/scripts/vpn-status.sh",
+    "return-type": "json",
+    "interval": 5,
+    "on-click": "~/.config/hypr/scripts/vpn-switcher.sh"
+  }
+}

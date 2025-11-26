@@ -1,0 +1,238 @@
+#!/usr/bin/env python3
+
+import subprocess
+import os
+
+# Secrets directory - configurable via chezmoi
+SECRETS_DIR = os.path.expanduser("{{ .secretsPath }}")
+VPN_DIR = os.path.join(SECRETS_DIR, "vpn") if os.path.isdir(os.path.join(os.path.expanduser("{{ .secretsPath }}"), "vpn")) else os.path.expanduser("~/cfg/vpn")
+HELPER = os.path.expanduser("~/.config/hypr/scripts/vpn-switcher-helper.sh")
+WOFI_CMD = ["wofi", "--dmenu", "--width", "450", "--height", "350", "--prompt", "VPN Switcher", "--cache-file", "/dev/null"]
+
+def run(cmd, check=False):
+    """Run command and return stdout, or None on failure."""
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=check)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return None
+
+def notify(msg):
+    subprocess.run(["notify-send", "VPN Switcher", msg, "-r", "91191", "-t", "2000"])
+
+def get_active_wg():
+    """Get list of active WireGuard interfaces."""
+    out = run(["wg", "show", "interfaces"])
+    return out.split() if out else []
+
+def is_tailscale_up():
+    """Check if tailscale is running."""
+    result = subprocess.run(["tailscale", "status"], capture_output=True)
+    return result.returncode == 0
+
+def get_ts_exit_node():
+    """Get current tailscale exit node if any."""
+    if not is_tailscale_up():
+        return None
+    out = run(["tailscale", "status", "--json"])
+    if out:
+        import json
+        try:
+            data = json.loads(out)
+            return data.get("ExitNodeStatus", {}).get("ID")
+        except json.JSONDecodeError:
+            pass
+    return None
+
+def get_wg_configs():
+    """Get list of WireGuard config files."""
+    configs = []
+    if os.path.isdir(VPN_DIR):
+        for f in os.listdir(VPN_DIR):
+            if f.endswith(".conf"):
+                configs.append(f[:-5])  # Remove .conf
+    return sorted(configs)
+
+def get_ts_accounts():
+    """Get list of tailscale accounts."""
+    out = run(["tailscale", "switch", "--list"])
+    if not out:
+        return []
+
+    accounts = []
+    for line in out.splitlines()[1:]:  # Skip header
+        parts = line.split()
+        if len(parts) >= 3:
+            id_, tailnet, account = parts[0], parts[1], parts[2]
+            is_active = account.endswith("*")
+            if is_active:
+                account = account[:-1]
+            accounts.append({"id": id_, "tailnet": tailnet, "account": account, "active": is_active})
+    return accounts
+
+def get_ts_exit_nodes():
+    """Get list of available tailscale exit nodes."""
+    if not is_tailscale_up():
+        return []
+
+    out = run(["tailscale", "exit-node", "list"])
+    if not out:
+        return []
+
+    nodes = []
+    for line in out.splitlines():
+        line = line.strip()
+        # Skip header, empty lines, and comment lines
+        if not line or line.startswith("IP") or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) >= 4:
+            ip, hostname = parts[0], parts[1]
+            country = parts[2] if len(parts) > 2 else "-"
+            city = parts[3] if len(parts) > 3 else "-"
+            status = " ".join(parts[4:]) if len(parts) > 4 else ""
+            # Skip offline nodes
+            if "offline" in status.lower():
+                continue
+            # Extract short name (before first dot)
+            short_name = hostname.split(".")[0]
+            nodes.append({"hostname": hostname, "short": short_name, "ip": ip, "country": country, "city": city})
+    return nodes
+
+def build_menu():
+    """Build the menu entries."""
+    lines = []
+    active_wg = get_active_wg()
+    ts_exit = get_ts_exit_node()
+
+    # WireGuard section
+    lines.append("━━━ WireGuard ━━━")
+    for name in get_wg_configs():
+        status = "●" if name in active_wg else "○"
+        lines.append(f"  {status}  {name}")
+
+    # Tailscale accounts section
+    lines.append("━━━ Tailscale Accounts ━━━")
+    for acc in get_ts_accounts():
+        status = "●" if acc["active"] else "○"
+        if acc["active"]:
+            lines.append(f"  {status}  {acc['tailnet']} ({acc['account']})")
+        else:
+            lines.append(f"  {status}  {acc['tailnet']} ({acc['account']}) [{acc['id']}]")
+
+    # Tailscale exit nodes section
+    lines.append("━━━ Tailscale Exit Nodes ━━━")
+    if is_tailscale_up():
+        if ts_exit:
+            lines.append("  ●  Exit Node Active - Disconnect")
+        for node in get_ts_exit_nodes():
+            lines.append(f"  ○  {node['hostname']} ({node['country']}/{node['city']})")
+    else:
+        lines.append("  ○  Start Tailscale")
+
+    # Actions
+    lines.append("━━━ Actions ━━━")
+    lines.append("  ⊘  Disconnect All")
+
+    return "\n".join(lines)
+
+def pkexec_helper(action, arg):
+    """Run helper script via pkexec."""
+    subprocess.run(["pkexec", HELPER, action, arg], capture_output=True)
+
+def disconnect_all_wg():
+    """Disconnect all WireGuard interfaces."""
+    for iface in get_active_wg():
+        conf_path = os.path.join(VPN_DIR, f"{iface}.conf")
+        if os.path.exists(conf_path):
+            pkexec_helper("wg-down", conf_path)
+        else:
+            pkexec_helper("wg-down", iface)
+
+def handle_selection(selection):
+    """Handle the user's menu selection."""
+    # Skip headers and empty
+    if not selection or selection.startswith("━━━"):
+        return
+
+    # Strip leading whitespace and status icon
+    clean = selection.strip()
+    if clean.startswith("●") or clean.startswith("○") or clean.startswith("⊘"):
+        clean = clean[1:].strip()
+
+    # Get current state
+    active_wg = get_active_wg()
+    wg_configs = get_wg_configs()
+    ts_accounts = get_ts_accounts()
+    ts_exit_nodes = get_ts_exit_nodes()
+
+    # Check if it's a WireGuard config
+    for name in wg_configs:
+        if clean == name:
+            if name in active_wg:
+                # Turn off
+                conf_path = os.path.join(VPN_DIR, f"{name}.conf")
+                pkexec_helper("wg-down", conf_path)
+                notify(f"WireGuard: {name} disconnected")
+            else:
+                # Turn on (disable others first)
+                disconnect_all_wg()
+                if is_tailscale_up():
+                    run(["tailscale", "set", "--exit-node="])
+                conf_path = os.path.join(VPN_DIR, f"{name}.conf")
+                pkexec_helper("wg-up", conf_path)
+                notify(f"WireGuard: {name} connected")
+            return
+
+    # Check if it's a Tailscale account
+    for acc in ts_accounts:
+        if acc["tailnet"] in clean and acc["account"] in clean:
+            if acc["active"]:
+                notify("Already on this Tailscale account")
+            else:
+                run(["tailscale", "switch", acc["id"]])
+                notify(f"Tailscale: Switched to {acc['tailnet']}")
+            return
+
+    # Check if it's a Tailscale exit node
+    if clean == "Exit Node Active - Disconnect":
+        run(["tailscale", "set", "--exit-node="])
+        notify("Tailscale exit node disconnected")
+        return
+
+    if clean == "Start Tailscale":
+        run(["tailscale", "up"])
+        notify("Tailscale started")
+        return
+
+    for node in ts_exit_nodes:
+        if node["hostname"] in clean or node["short"] in clean:
+            disconnect_all_wg()
+            run(["tailscale", "set", f"--exit-node={node['ip']}"])
+            notify(f"Tailscale: Connected via {node['short']}")
+            return
+
+    # Actions
+    if clean == "Disconnect All":
+        disconnect_all_wg()
+        if is_tailscale_up():
+            run(["tailscale", "set", "--exit-node="])
+        notify("All VPNs disconnected")
+
+def main():
+    menu = build_menu()
+
+    # Run wofi
+    result = subprocess.run(
+        WOFI_CMD,
+        input=menu,
+        capture_output=True,
+        text=True
+    )
+
+    selection = result.stdout.strip()
+    if selection:
+        handle_selection(selection)
+
+if __name__ == "__main__":
+    main()

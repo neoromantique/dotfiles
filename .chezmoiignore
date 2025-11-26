@@ -1,0 +1,20 @@
+# Ignore README and install script in home directory
+README.md
+install.sh
+
+# Ignore backup files
+*.pre-ai
+*.bak
+*.orig
+*.backup
+
+# Ignore git and editor files
+.git/
+.gitignore
+*.swp
+*~
+.claude/
+
+# OS-specific ignores
+.DS_Store
+Thumbs.db

@@ -1,0 +1,88 @@
+/* ANSI/BBS monospace */
+* {
+  font-family: "Terminus", "IBM Plex Mono", "JetBrainsMono Nerd Font",
+    monospace;
+  font-size: 12px;
+  min-height: 0;
+}
+
+window#waybar {
+  background: #141414;
+  color: #cccccc;
+  border: 0px solid #cccccc;
+  border-radius: 0;
+  margin: 4px 6px;
+  padding: 2px 6px;
+}
+
+/* Boxy ASCII-ish modules */
+#workspaces button,
+#custom-vpn,
+#pulseaudio,
+#network,
+#battery,
+#backlight,
+#cpu,
+#memory,
+#clock,
+#tray {
+  background: transparent;
+  color: #cccccc;
+  border: 1px dashed #cccccc;
+  border-radius: 0;
+  padding: 1px 6px;
+  margin: 0 3px;
+}
+
+/* Workspaces: focused/urgent with inverse/red */
+#workspaces button:hover {
+  background: #001900;
+}
+#workspaces button.focused,
+#workspaces button.active {
+  background: #cccccc;
+  color: #000;
+  border-color: #cccccc;
+}
+#workspaces button.urgent {
+  background: #ff0000;
+  color: #000;
+  border-color: #ff0000;
+}
+
+/* Specials: dotted border to mark them */
+#workspaces button.special {
+  border-style: dotted;
+}
+
+/* VPN status colors */
+#custom-vpn.connected {
+  color: #00ff00;
+  border-color: #00ff00;
+}
+#custom-vpn.connected-no-tunnel {
+  color: #cccccc;
+}
+#custom-vpn.disconnected {
+  color: #666666;
+}
+
+/* Battery states */
+#battery.warning {
+  color: #ffaa00;
+  border-color: #ffaa00;
+}
+#battery.critical {
+  color: #ff0000;
+  border-color: #ff0000;
+}
+#battery.charging {
+  color: #00ff00;
+}
+
+/* Retro tooltip */
+tooltip {
+  background: #000;
+  color: #cccccc;
+  border: 1px solid #cccccc;
+}
