@@ -170,8 +170,8 @@ device {
 
 $mainMod = SUPER
 
-# Keyboard layout toggle
-bind = SUPER, SPACE, exec, bash -c "current=$(hyprctl getoption input:kb_layout -j | jq -r '.str'); if [[ $current == \"us,ru\" ]]; then hyprctl keyword input:kb_layout 'ru,us'; else hyprctl keyword input:kb_layout 'us,ru'; fi"
+# Keyboard layout toggle (us/ru)
+bind = SUPER, SPACE, exec, hyprctl switchxkblayout all next
 
 # Wallpapers
 bind = SUPER, bracketright, exec, ~/Scripts/change_wallpaper.sh next
@@ -236,7 +236,7 @@ bind = $mainMod SHIFT, 8, movetoworkspacesilent, 8
 bind = $mainMod SHIFT, 9, movetoworkspacesilent, 9
 bind = $mainMod SHIFT, 0, movetoworkspacesilent, 10
 
-# Screenshot
+# Screenshot (selection, copies to clipboard)
 bind = , Print, exec, ~/.config/hypr/scripts/screenshot.sh
 
 # Scroll through existing workspaces

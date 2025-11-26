@@ -18,12 +18,21 @@ if [ ! -d "$save_dir" ] ; then
     mkdir -p $save_dir
 fi
 
-case $1 in
-p) grim $save_dir/$save_file ;;
-s) grim -g "$(slurp)" - | satty --filename - --fullscreen --output-filename ~/Pictures/Screenshots/satty-$(date '+%Y%m%d-%H:%M:%S').png;;
-*)  echo "...valid options are..."
-    echo "p : print screen to $save_dir"
-    echo "s : snip current screen to $save_dir"
+case ${1:-s} in
+p)  # Full screen - save and copy
+    grim "$save_dir/$save_file"
+    wl-copy < "$save_dir/$save_file"
+    ;;
+s)  # Selection - save and copy
+    grim -g "$(slurp)" "$save_dir/$save_file" && wl-copy < "$save_dir/$save_file"
+    ;;
+e)  # Selection with editor (satty)
+    grim -g "$(slurp)" - | satty --filename - --fullscreen --output-filename "$save_dir/satty-$(date '+%Y%m%d-%H%M%S').png"
+    ;;
+*)  echo "Usage: $0 [p|s|e]"
+    echo "  p - full screen"
+    echo "  s - selection (default)"
+    echo "  e - selection with editor"
     exit 1 ;;
 esac
 
