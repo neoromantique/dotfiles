@@ -127,6 +127,7 @@ def build_menu():
             lines.append("  ●  Exit Node Active - Disconnect")
         for node in get_ts_exit_nodes():
             lines.append(f"  ○  {node['hostname']} ({node['country']}/{node['city']})")
+        lines.append("  ⊘  Tailscale Down")
     else:
         lines.append("  ○  Start Tailscale")
 
@@ -203,6 +204,11 @@ def handle_selection(selection):
     if clean == "Start Tailscale":
         run(["tailscale", "up"])
         notify("Tailscale started")
+        return
+
+    if clean == "Tailscale Down":
+        run(["tailscale", "down"])
+        notify("Tailscale stopped")
         return
 
     for node in ts_exit_nodes:

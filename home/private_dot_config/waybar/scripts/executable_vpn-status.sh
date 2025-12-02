@@ -43,7 +43,7 @@ get_status() {
     fi
 
     # Check Tailscale
-    if command -v tailscale &>/dev/null; then
+    if command -v tailscale &>/dev/null && tailscale status &>/dev/null; then
         ts_json=$(tailscale status --json 2>/dev/null)
         if [[ -n "$ts_json" ]]; then
             ts_state=$(echo "$ts_json" | jq -r '.BackendState // empty')
