@@ -6,7 +6,7 @@ import os
 # Secrets directory - configurable via chezmoi
 SECRETS_DIR = os.path.expanduser("{{ .secretsPath }}")
 VPN_DIR = os.path.join(SECRETS_DIR, "vpn") if os.path.isdir(os.path.join(os.path.expanduser("{{ .secretsPath }}"), "vpn")) else os.path.expanduser("~/cfg/vpn")
-HELPER = os.path.expanduser("~/.config/hypr/scripts/vpn-switcher-helper.sh")
+HELPER = os.path.expanduser("~/.local/bin/vpn-helper")
 WOFI_CMD = ["wofi", "--dmenu", "--width", "450", "--height", "350", "--prompt", "VPN Switcher", "--cache-file", "/dev/null"]
 
 def run(cmd, check=False):
@@ -137,18 +137,18 @@ def build_menu():
 
     return "\n".join(lines)
 
-def pkexec_helper(action, arg):
-    """Run helper script via pkexec."""
-    subprocess.run(["pkexec", HELPER, action, arg], capture_output=True)
+def sudo_helper(action, arg):
+    """Run helper script via sudo (configured for NOPASSWD)."""
+    subprocess.run(["sudo", HELPER, action, arg], capture_output=True)
 
 def disconnect_all_wg():
     """Disconnect all WireGuard interfaces."""
     for iface in get_active_wg():
         conf_path = os.path.join(VPN_DIR, f"{iface}.conf")
         if os.path.exists(conf_path):
-            pkexec_helper("wg-down", conf_path)
+            sudo_helper("wg-down", conf_path)
         else:
-            pkexec_helper("wg-down", iface)
+            sudo_helper("wg-down", iface)
 
 def handle_selection(selection):
     """Handle the user's menu selection."""
@@ -173,7 +173,7 @@ def handle_selection(selection):
             if name in active_wg:
                 # Turn off
                 conf_path = os.path.join(VPN_DIR, f"{name}.conf")
-                pkexec_helper("wg-down", conf_path)
+                sudo_helper("wg-down", conf_path)
                 notify(f"WireGuard: {name} disconnected")
             else:
                 # Turn on (disable others first)
@@ -181,7 +181,7 @@ def handle_selection(selection):
                 if is_tailscale_up():
                     run(["tailscale", "set", "--exit-node="])
                 conf_path = os.path.join(VPN_DIR, f"{name}.conf")
-                pkexec_helper("wg-up", conf_path)
+                sudo_helper("wg-up", conf_path)
                 notify(f"WireGuard: {name} connected")
             return
 

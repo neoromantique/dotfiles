@@ -29,11 +29,18 @@
 {{-   $secretsPath = "~/secrets" -}}
 {{- end -}}
 
+{{- /* Prompt for workspace PIN */ -}}
+{{- $workspacePin := promptStringOnce . "workspacePin" "Workspace PIN (for protected workspaces) [1234]" -}}
+{{- if eq $workspacePin "" -}}
+{{-   $workspacePin = "1234" -}}
+{{- end -}}
+
 [data]
     deviceProfile = {{ $deviceProfile | quote }}
     hostname = {{ $hostname | quote }}
     distro = {{ $distro | quote }}
     secretsPath = {{ $secretsPath | quote }}
+    workspacePin = {{ $workspacePin | quote }}
 
     # Device-specific configuration
     {{- if eq $deviceProfile "desktop" }}

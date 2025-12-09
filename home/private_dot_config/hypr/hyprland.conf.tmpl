@@ -181,17 +181,17 @@ bind = SUPER, bracketleft, exec, ~/Scripts/change_wallpaper.sh prev
 bind = $mainMod, Q, exec, $terminal
 bind = $mainMod, K, killactive,
 bind = $mainMod, M, exit,
-bind = $mainMod, E, exec, ~/.config/hypr/scripts/toggle_expo_on_primary.sh
+bind = $mainMod, E, exec, ~/.local/bin/hypr-expo
 bind = $mainMod, V, togglefloating,
 bind = $mainMod, R, exec, $menu
 bind = $mainMod SHIFT, R, exec, hyprctl reload
 bind = $mainMod, P, pseudo,
 bind = $mainMod, J, togglesplit,
-bind = $mainMod, L, exec, pactl set-sink-mute @DEFAULT_SINK@ 1 && hyprlock
+bind = $mainMod, L, exec, hyprctl switchxkblayout all 0 && pactl set-sink-mute @DEFAULT_SINK@ 1 && hyprlock
 bind = $mainMod, t, togglegroup
 
 # VPN switcher
-bind = , F6, exec, ~/.config/hypr/scripts/vpn-switcher.sh
+bind = , F6, exec, ~/.local/bin/vpn-switcher
 
 # Move focus with mainMod + arrow keys
 bind = $mainMod, left, movefocus, l
@@ -211,7 +211,7 @@ bind = $mainMod, 8, workspace, 8
 bind = $mainMod, 9, workspace, 9
 
 # Special workspaces
-bind = SUPER, F12, exec, ~/.config/hypr/scripts/workspace-pin.sh 1337
+bind = SUPER, F12, exec, ~/.local/bin/workspace-pin 1337
 bind = , F12, togglespecialworkspace, org
 bind = SUPER, A, togglespecialworkspace, org
 bind = SUPER SHIFT, F12, movetoworkspace, special:org
@@ -237,7 +237,7 @@ bind = $mainMod SHIFT, 9, movetoworkspacesilent, 9
 bind = $mainMod SHIFT, 0, movetoworkspacesilent, 10
 
 # Screenshot (selection, copies to clipboard)
-bind = , Print, exec, ~/.config/hypr/scripts/screenshot.sh
+bind = , Print, exec, ~/.local/bin/screenshot
 
 # Scroll through existing workspaces
 bind = $mainMod, mouse_down, workspace, e+1

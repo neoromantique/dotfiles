@@ -1,0 +1,32 @@
+#!/bin/bash
+# Setup sudoers rule for vpn-helper (passwordless VPN switching)
+
+SUDOERS_FILE="/etc/sudoers.d/vpn-helper"
+HELPER_PATH="{{ .chezmoi.homeDir }}/.local/bin/vpn-helper"
+USER="{{ .chezmoi.username }}"
+
+# Check if rule already exists
+if [ -f "$SUDOERS_FILE" ] && grep -q "$HELPER_PATH" "$SUDOERS_FILE" 2>/dev/null; then
+    echo "Sudoers rule for vpn-helper already exists"
+    exit 0
+fi
+
+echo "Setting up sudoers rule for vpn-helper..."
+echo "This will allow running VPN commands without password prompts."
+echo ""
+
+# Create the sudoers rule
+RULE="$USER ALL=(ALL) NOPASSWD: $HELPER_PATH"
+
+# Use sudo to write the rule
+echo "$RULE" | sudo tee "$SUDOERS_FILE" > /dev/null
+sudo chmod 440 "$SUDOERS_FILE"
+
+# Validate the sudoers file
+if sudo visudo -c -f "$SUDOERS_FILE" > /dev/null 2>&1; then
+    echo "Sudoers rule installed successfully"
+else
+    echo "Error: Invalid sudoers file, removing..."
+    sudo rm -f "$SUDOERS_FILE"
+    exit 1
+fi

@@ -62,8 +62,8 @@
     "format-muted": "VOL muted",
     "on-click": "pavucontrol -t 3",
     "on-click-right": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
-    "on-scroll-up": "~/.config/hypr/scripts/scroll-audio-sink.sh up",
-    "on-scroll-down": "~/.config/hypr/scripts/scroll-audio-sink.sh down"
+    "on-scroll-up": "~/.local/bin/audio-sink-cycle up",
+    "on-scroll-down": "~/.local/bin/audio-sink-cycle down"
   },
 
   "pulseaudio#mic": {
@@ -116,9 +116,9 @@
   "tray": { "spacing": 4 },
 
   "custom/vpn": {
-    "exec": "~/.config/waybar/scripts/vpn-status.sh",
+    "exec": "~/.local/bin/vpn-status",
     "return-type": "json",
     "interval": 5,
-    "on-click": "~/.config/hypr/scripts/vpn-switcher.sh"
+    "on-click": "~/.local/bin/vpn-switcher"
   }
 }
