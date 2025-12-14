@@ -1,0 +1,285 @@
+#!/usr/bin/env python3
+"""Quick memo - text input or clipboard capture to jax-bot.
+
+Hotkeys:
+  F12        - Text input mode (wofi dialog)
+  SHIFT+F12  - Clipboard mode (text/URL/image)
+
+Usage:
+  quick-memo --input      # Text input via wofi
+  quick-memo --clipboard  # Capture clipboard content
+"""
+
+import argparse
+import subprocess
+import sys
+
+# httpx is optional - fall back to urllib if not available
+try:
+    import httpx
+    HAS_HTTPX = True
+except ImportError:
+    import urllib.request
+    import urllib.error
+    import json as json_module
+    HAS_HTTPX = False
+
+# Configuration - chezmoi template with default fallback
+{{- $jaxUrl := "http://127.0.0.1:8080" -}}
+{{- if hasKey . "jaxBotUrl" -}}
+{{-   $jaxUrl = .jaxBotUrl -}}
+{{- end }}
+JAX_URL = "{{ $jaxUrl }}"
+NOTIFY_ID = "91192"
+
+
+def notify(title: str, msg: str, critical: bool = False):
+    """Send desktop notification."""
+    cmd = ["notify-send", title, msg, "-r", NOTIFY_ID, "-t", "3000"]
+    if critical:
+        cmd.extend(["-u", "critical"])
+    subprocess.run(cmd, capture_output=True)
+
+
+def check_jax() -> bool:
+    """Check if jax-bot is running."""
+    try:
+        if HAS_HTTPX:
+            httpx.get(f"{JAX_URL}/", timeout=2)
+        else:
+            urllib.request.urlopen(f"{JAX_URL}/", timeout=2)
+        return True
+    except Exception:
+        return False
+
+
+def get_text_input() -> str | None:
+    """Open yad text area dialog."""
+    result = subprocess.run(
+        [
+            "yad", "--form",
+            "--field", ":TXT",
+            "--title", "Quick Memo",
+            "--width", "500",
+            "--height", "300",
+            "--center",
+            "--on-top",
+            "--skip-taskbar",
+            "--undecorated",
+            "--borders", "20",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None  # User cancelled
+    # yad returns field value followed by |
+    text = result.stdout.strip()
+    if text.endswith("|"):
+        text = text[:-1]
+    return text.strip()
+
+
+def get_clipboard_type() -> str:
+    """Detect clipboard content type."""
+    result = subprocess.run(
+        ["wl-paste", "--list-types"],
+        capture_output=True,
+        text=True,
+    )
+    types = result.stdout.lower()
+    if "image/png" in types:
+        return "image/png"
+    elif "image/jpeg" in types:
+        return "image/jpeg"
+    elif "text/plain" in types:
+        return "text"
+    return "unknown"
+
+
+def get_clipboard_text() -> str:
+    """Get text from clipboard."""
+    result = subprocess.run(["wl-paste"], capture_output=True, text=True)
+    return result.stdout.strip()
+
+
+def get_clipboard_image(mime: str) -> bytes:
+    """Get image bytes from clipboard."""
+    result = subprocess.run(
+        ["wl-paste", "--type", mime],
+        capture_output=True,
+    )
+    return result.stdout
+
+
+def send_memo_httpx(
+    content: str | None = None,
+    image_data: bytes | None = None,
+    image_type: str | None = None,
+) -> dict:
+    """Send memo via httpx."""
+    try:
+        if image_data:
+            ext = "png" if "png" in (image_type or "") else "jpg"
+            response = httpx.post(
+                f"{JAX_URL}/api/memo",
+                files={"file": (f"clipboard.{ext}", image_data, image_type)},
+                data={"auto_tag": "true"},
+                timeout=30,
+            )
+        else:
+            is_url = (content or "").startswith(("http://", "https://"))
+            response = httpx.post(
+                f"{JAX_URL}/api/memo",
+                data={
+                    "content": content,
+                    "auto_tag": "true",
+                    "summarize_url": "true" if is_url else "false",
+                },
+                timeout=30,
+            )
+        return response.json()
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def send_memo_urllib(
+    content: str | None = None,
+    image_data: bytes | None = None,
+    image_type: str | None = None,
+) -> dict:
+    """Send memo via urllib (fallback when httpx unavailable)."""
+    import io
+    import uuid
+
+    try:
+        boundary = uuid.uuid4().hex
+
+        if image_data:
+            ext = "png" if "png" in (image_type or "") else "jpg"
+            filename = f"clipboard.{ext}"
+
+            body = io.BytesIO()
+            body.write(f"--{boundary}\r\n".encode())
+            body.write(f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'.encode())
+            body.write(f"Content-Type: {image_type}\r\n\r\n".encode())
+            body.write(image_data)
+            body.write(f"\r\n--{boundary}\r\n".encode())
+            body.write(b'Content-Disposition: form-data; name="auto_tag"\r\n\r\ntrue')
+            body.write(f"\r\n--{boundary}--\r\n".encode())
+
+            req = urllib.request.Request(
+                f"{JAX_URL}/api/memo",
+                data=body.getvalue(),
+                headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            )
+        else:
+            is_url = (content or "").startswith(("http://", "https://"))
+            data = urllib.parse.urlencode({
+                "content": content or "",
+                "auto_tag": "true",
+                "summarize_url": "true" if is_url else "false",
+            }).encode()
+            req = urllib.request.Request(f"{JAX_URL}/api/memo", data=data)
+
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return json_module.loads(response.read().decode())
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def send_memo(
+    content: str | None = None,
+    image_data: bytes | None = None,
+    image_type: str | None = None,
+) -> dict:
+    """Send memo to jax-bot API."""
+    if HAS_HTTPX:
+        return send_memo_httpx(content, image_data, image_type)
+    return send_memo_urllib(content, image_data, image_type)
+
+
+def mode_input():
+    """F12: Text input mode via wofi dialog."""
+    text = get_text_input()
+    if not text:
+        return  # User cancelled, no notification
+
+    notify("Quick Memo", "Processing...")
+    result = send_memo(content=text)
+
+    if result.get("success"):
+        tags = " ".join(f"#{t}" for t in result.get("tags", []))
+        preview = text[:60] + ("..." if len(text) > 60 else "")
+        notify("Quick Memo", f"Saved!\n{preview}\n{tags}")
+    else:
+        notify("Quick Memo", f"Error: {result.get('error')}", critical=True)
+
+
+def mode_clipboard():
+    """SHIFT+F12: Clipboard capture mode."""
+    clip_type = get_clipboard_type()
+
+    if clip_type == "unknown":
+        notify("Quick Memo", "Clipboard empty", critical=True)
+        return
+
+    notify("Quick Memo", "Processing...")
+
+    if clip_type.startswith("image/"):
+        image_data = get_clipboard_image(clip_type)
+        if not image_data:
+            notify("Quick Memo", "Failed to read image", critical=True)
+            return
+        result = send_memo(image_data=image_data, image_type=clip_type)
+    else:
+        text = get_clipboard_text()
+        if not text:
+            notify("Quick Memo", "Clipboard empty", critical=True)
+            return
+        result = send_memo(content=text)
+
+    if result.get("success"):
+        tags = " ".join(f"#{t}" for t in result.get("tags", []))
+        preview = result.get("content", "")[:60]
+        if len(result.get("content", "")) > 60:
+            preview += "..."
+        notify("Quick Memo", f"Saved!\n{preview}\n{tags}")
+    else:
+        notify("Quick Memo", f"Error: {result.get('error')}", critical=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Quick memo to jax-bot",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument(
+        "--input", "-i",
+        action="store_true",
+        help="Text input mode (wofi dialog)",
+    )
+    parser.add_argument(
+        "--clipboard", "-c",
+        action="store_true",
+        help="Clipboard capture mode",
+    )
+    args = parser.parse_args()
+
+    if not args.input and not args.clipboard:
+        parser.print_help()
+        sys.exit(1)
+
+    if not check_jax():
+        notify("Quick Memo", "jax-bot not running", critical=True)
+        sys.exit(1)
+
+    if args.input:
+        mode_input()
+    elif args.clipboard:
+        mode_clipboard()
+
+
+if __name__ == "__main__":
+    main()

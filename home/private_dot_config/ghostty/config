@@ -1,0 +1,50 @@
+# Ghostty Configuration
+# https://ghostty.org/docs/config
+
+# Appearance
+background = #141414
+background-opacity = 0.9
+background-blur-radius = 20
+
+# Window
+window-padding-x = 12
+window-padding-y = 12
+window-padding-balance = true
+window-decoration = server
+
+# Font
+font-size = 12
+font-thicken = true
+
+# Cursor
+cursor-style = block
+cursor-style-blink = false
+
+# Scrollback
+scrollback-limit = 4294967295
+
+# Clipboard (OSC 52 for neovim/tmux/SSH)
+copy-on-select = true
+clipboard-trim-trailing-spaces = true
+clipboard-read = allow
+clipboard-write = allow
+
+# Shell integration with SSH support
+shell-integration = detect
+shell-integration-features = cursor,sudo,title,ssh-env,ssh-terminfo
+
+# Mouse
+mouse-hide-while-typing = true
+
+# Misc
+confirm-close-surface = false
+
+# Hyprland/Wayland
+gtk-single-instance = true
+class = ghostty
+
+# Quick terminal (quake-style dropdown)
+quick-terminal-position = top
+quick-terminal-animation-duration = 0.1
+quick-terminal-autohide = true
+keybind = global:ctrl+grave_accent=toggle_quick_terminal

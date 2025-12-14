@@ -102,6 +102,11 @@ windowrulev2 = rounding 0, floating:0, onworkspace:w[tv1]
 windowrulev2 = bordersize 0, floating:0, onworkspace:f[1]
 windowrulev2 = rounding 0, floating:0, onworkspace:f[1]
 
+# Quick Memo popup (yad)
+windowrulev2 = float, class:^(yad)$
+windowrulev2 = center, class:^(yad)$
+windowrulev2 = pin, class:^(yad)$
+
 binds {
     hide_special_on_workspace_change = true
     workspace_back_and_forth = true
@@ -212,9 +217,12 @@ bind = $mainMod, 9, workspace, 9
 
 # Special workspaces
 bind = SUPER, F12, exec, ~/.local/bin/workspace-pin 1337
-bind = , F12, togglespecialworkspace, org
 bind = SUPER, A, togglespecialworkspace, org
-bind = SUPER SHIFT, F12, movetoworkspace, special:org
+bind = SUPER SHIFT, A, movetoworkspace, special:org
+
+# Quick Memo (jax-bot integration)
+bind = , F12, exec, ~/.local/bin/quick-memo --input
+bind = SHIFT, F12, exec, ~/.local/bin/quick-memo --clipboard
 bind = SUPER, X, workspace, name:media
 bind = SUPER SHIFT, X, movetoworkspace, name:media
 bind = SUPER SHIFT, C, movetoworkspace, name:tg
