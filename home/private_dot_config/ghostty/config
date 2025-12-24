@@ -38,6 +38,7 @@ mouse-hide-while-typing = true
 
 # Misc
 confirm-close-surface = false
+async-backend = epoll
 
 # Hyprland/Wayland
 gtk-single-instance = true

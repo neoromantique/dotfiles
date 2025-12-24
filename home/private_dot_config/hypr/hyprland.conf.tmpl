@@ -274,8 +274,16 @@ bindl = , XF86AudioPrev, exec, playerctl previous
 ##############################
 
 # Window rules for apps
+windowrulev2 = workspace 1, class:^zen$
+windowrulev2 = workspace 2, class:^(chromium-work)$
+windowrulev2 = workspace special:llm, class:^(chromium-llm)$
+windowrulev2 = workspace special:llm, class:^(heynote|Heynote)$
 windowrulev2 = workspace name:tg, class:^(org.telegram.desktop)$
 windowrulev2 = workspace name:tg, class:^(discord)$
+windowrulev2 = workspace name:tg, class:^Slack$
+windowrulev2 = workspace name:tg, class:^org.mozilla.Thunderbird$
+windowrulev2 = workspace name:media, class:^spotify$
+windowrulev2 = workspace special:org, class:^ticktick$
 windowrulev2 = suppressevent maximize, class:.*
 windowrulev2 = nofocus,class:^$,title:^$,xwayland:1,floating:1,fullscreen:0,pinned:0
 

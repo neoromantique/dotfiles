@@ -21,6 +21,17 @@ exec-once = hypridle
 # Clipboard
 exec-once = copyq --start-server
 
+# User apps
+exec-once = zen-browser
+exec-once = chromium --profile-directory=work --class=chromium-work
+exec-once = chromium --profile-directory=llm --class=chromium-llm
+exec-once = heynote
+exec-once = telegram-desktop
+exec-once = slack
+exec-once = thunderbird
+exec-once = spotify
+exec-once = ticktick
+
 {{- if eq .deviceProfile "desktop" }}
 # Desktop: Hyprland plugins
 exec-once = hyprpm reload -n
