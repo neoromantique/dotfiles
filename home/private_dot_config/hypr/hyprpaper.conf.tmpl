@@ -1,13 +1,9 @@
 # Hyprpaper Configuration
 # Device: {{ .deviceProfile }} ({{ .hostname }})
 
-preload = ~/Pictures/wlpp/wallhaven-9dkeqd.png
+splash = false
 
-{{- if eq .deviceProfile "desktop" }}
-wallpaper = {{ .primaryMonitor }}, ~/Pictures/wlpp/wallhaven-9dkeqd.png
-{{- if .secondaryMonitor }}
-wallpaper = {{ .secondaryMonitor }}, ~/Pictures/wlpp/wallhaven-9dkeqd.png
-{{- end }}
-{{- else }}
-wallpaper = {{ .primaryMonitor }}, ~/Pictures/wlpp/wallhaven-9dkeqd.png
-{{- end }}
+wallpaper {
+    monitor =
+    path = ~/Pictures/wlpp/wallhaven-9dkeqd.png
+}

@@ -1,0 +1,6 @@
+# Atuin config (managed by chezmoi)
+#
+# Keep normal "Up" history scoped to this shell session, while Ctrl-R
+# search stays global so older/other-session commands are still discoverable.
+filter_mode = "global"
+filter_mode_shell_up_key_binding = "session"

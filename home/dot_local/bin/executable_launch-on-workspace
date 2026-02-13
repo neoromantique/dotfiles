@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Usage: launch-on-workspace <workspace> <exact_class> <command...>
+
+target_ws="$1"
+target_class="$2"
+shift 2
+# Use array to preserve argument quoting
+cmd=("$@")
+
+echo "$(date) [launch-on-workspace] Launching class='$target_class' to workspace='$target_ws'" >> /tmp/hypr-launch.log
+
+# Start the application with preserved arguments
+nohup "${cmd[@]}" >/dev/null 2>&1 &
+
+# Wait for the window to appear (up to 15 seconds)
+for i in {1..60}; do
+    # Get address of matching window
+    # We check both class and initialClass for robustness
+    addr=$(hyprctl clients -j | jq -r ".[] | select(.class == \"$target_class\" or .initialClass == \"$target_class\") | .address" | head -1)
+    
+    if [ ! -z "$addr" ] && [ "$addr" != "null" ]; then
+        echo "$(date) [launch-on-workspace] Found $target_class at $addr, moving to $target_ws" >> /tmp/hypr-launch.log
+        hyprctl dispatch movetoworkspacesilent "$target_ws,address:$addr"
+        exit 0
+    fi
+    sleep 0.25
+done
+
+echo "$(date) [launch-on-workspace] Timeout waiting for $target_class" >> /tmp/hypr-launch.log
+exit 1

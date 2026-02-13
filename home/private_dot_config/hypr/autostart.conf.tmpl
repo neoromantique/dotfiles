@@ -9,7 +9,7 @@ exec-once = xwayland-satellite
 
 # System tray & bar
 exec-once = nm-applet &
-exec-once = waybar
+exec-once = qs
 
 # Notifications
 exec-once = swaync
@@ -23,14 +23,14 @@ exec-once = copyq --start-server
 
 # User apps
 exec-once = zen-browser
-exec-once = chromium --profile-directory=work --class=chromium-work
-exec-once = chromium --profile-directory=llm --class=chromium-llm
-exec-once = heynote
-exec-once = telegram-desktop
-exec-once = slack
-exec-once = thunderbird
-exec-once = spotify
-exec-once = ticktick
+exec-once = ~/.local/bin/launch-on-workspace 2 chromium-work chromium --profile-directory=Default --class=chromium-work
+exec-once = ~/.local/bin/launch-on-workspace "special:llm" chromium-llm chromium --user-data-dir=$HOME/.config/chromium-llm --class=chromium-llm
+exec-once = ~/.local/bin/launch-on-workspace "special:llm" Heynote heynote
+exec-once = ~/.local/bin/launch-on-workspace "name:tg" org.telegram.desktop Telegram
+exec-once = ~/.local/bin/launch-on-workspace "name:tg" Slack slack
+exec-once = ~/.local/bin/launch-on-workspace "name:tg" org.mozilla.Thunderbird thunderbird
+exec-once = ~/.local/bin/launch-on-workspace "name:media" spotify spotify
+exec-once = ~/.local/bin/launch-on-workspace "special:org" ticktick ticktick
 
 {{- if eq .deviceProfile "desktop" }}
 # Desktop: Hyprland plugins

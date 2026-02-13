@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ms=${1:-200}
+shift || true
+
+if [ "$#" -eq 0 ]; then
+  echo "usage: hypr-debounce <ms> <command...>" >&2
+  exit 2
+fi
+
+key=$(printf '%s\0' "$@" | sha1sum | awk '{print $1}')
+state="/tmp/hypr-debounce-$key"
+now=$(date +%s%3N)
+
+if [ -f "$state" ]; then
+  last=$(cat "$state" 2>/dev/null || echo 0)
+  if [ $((now - last)) -lt "$ms" ]; then
+    exit 0
+  fi
+fi
+
+printf '%s\n' "$now" > "$state"
+exec "$@"

@@ -1,0 +1,172 @@
+// Niri configuration
+// Device: {{ .deviceProfile }} ({{ .hostname }})
+// Managed by chezmoi - edit source at ~/dotfiles
+
+input {
+    keyboard {
+        xkb {
+            layout "us,ru"
+            options "caps:escape"
+        }
+        numlock
+    }
+
+{{- if .hasTouchpad }}
+    touchpad {
+        tap
+        dwt
+        natural-scroll
+    }
+{{- end }}
+
+    focus-follows-mouse
+}
+
+{{- if eq .deviceProfile "desktop" }}
+output "{{ .primaryMonitor }}" {
+    mode "{{ .primaryResolution }}"
+    position x=0 y=0
+}
+
+{{- if .secondaryMonitor }}
+output "{{ .secondaryMonitor }}" {
+    mode "{{ .secondaryResolution }}"
+}
+{{- end }}
+{{- else }}
+output "{{ .primaryMonitor }}" {
+    mode "{{ .primaryResolution }}"
+}
+{{- end }}
+
+layout {
+    gaps 5
+    center-focused-column "never"
+
+    focus-ring {
+        off
+    }
+
+    border {
+        on
+        width 2
+        // Subtle orange gradient for a muted "Hackers (1995)" look.
+        active-gradient from="#ff9a33" to="#ffad55" angle=90
+        inactive-color "#3a2a12cc"
+        urgent-color "#ff0000"
+    }
+
+    shadow {
+        off
+    }
+}
+
+animations {
+    off
+}
+
+// Avoid border/background fill showing through transparent terminals.
+prefer-no-csd
+
+// Startup apps (portable subset from Hyprland autostart)
+spawn-at-startup "nm-applet"
+spawn-at-startup "qs"
+spawn-at-startup "swaync"
+spawn-at-startup "hyprpaper"
+spawn-at-startup "hypridle"
+spawn-at-startup "copyq" "--start-server"
+spawn-at-startup "zen-browser"
+
+// Keep quick memo popup floating.
+window-rule {
+    match app-id=r#"^(yad)$"#
+    open-floating true
+}
+
+binds {
+    Mod+Shift+Slash { show-hotkey-overlay; }
+
+    // Terminal / launcher
+    Mod+Q { spawn "alacritty"; }
+    Mod+R { spawn-sh "wofi --show drun"; }
+
+    // Core controls
+    Mod+K repeat=false { close-window; }
+    Mod+M { quit; }
+    Mod+V { toggle-window-floating; }
+    Mod+E { toggle-overview; }
+    Mod+F { maximize-column; }
+    Mod+Shift+F { fullscreen-window; }
+
+    // Layout toggle (us/ru)
+    Mod+Space { switch-layout "next"; }
+
+    // Lock
+    Super+Alt+L { spawn-sh "pactl set-sink-mute @DEFAULT_SINK@ 1 && hyprlock"; }
+
+    // VPN and screenshot helpers
+    F6 { spawn-sh "~/.local/bin/vpn-switcher"; }
+    Print { spawn-sh "~/.local/bin/screenshot"; }
+
+    // Snap-like half-screen placement for focused window.
+    // Keep navigation on Mod+H / Mod+L.
+    Mod+Left {
+        spawn-sh "niri msg action move-window-to-floating && niri msg action set-window-width '50%' && niri msg action move-floating-window -x -100000";
+    }
+    Mod+Right {
+        spawn-sh "niri msg action move-window-to-floating && niri msg action set-window-width '50%' && niri msg action move-floating-window -x +100000";
+    }
+    Mod+Up    { focus-window-up; }
+    Mod+Down  { focus-window-down; }
+    Mod+H     { focus-column-left; }
+    Mod+L     { focus-column-right; }
+    Mod+J     { focus-window-down; }
+    Mod+I     { focus-window-up; }
+
+    // Move windows/columns
+    Mod+Ctrl+Left  { move-column-left; }
+    Mod+Ctrl+Right { move-column-right; }
+    Mod+Ctrl+Up    { move-window-up; }
+    Mod+Ctrl+Down  { move-window-down; }
+
+    // Workspace navigation
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+6 { focus-workspace 6; }
+    Mod+7 { focus-workspace 7; }
+    Mod+8 { focus-workspace 8; }
+    Mod+9 { focus-workspace 9; }
+
+    Mod+Ctrl+1 { move-column-to-workspace 1; }
+    Mod+Ctrl+2 { move-column-to-workspace 2; }
+    Mod+Ctrl+3 { move-column-to-workspace 3; }
+    Mod+Ctrl+4 { move-column-to-workspace 4; }
+    Mod+Ctrl+5 { move-column-to-workspace 5; }
+    Mod+Ctrl+6 { move-column-to-workspace 6; }
+    Mod+Ctrl+7 { move-column-to-workspace 7; }
+    Mod+Ctrl+8 { move-column-to-workspace 8; }
+    Mod+Ctrl+9 { move-column-to-workspace 9; }
+
+    // Scroll workspaces
+    Mod+WheelScrollDown cooldown-ms=150 { focus-workspace-down; }
+    Mod+WheelScrollUp cooldown-ms=150 { focus-workspace-up; }
+
+    // Media keys
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05-"; }
+    XF86AudioMute allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
+    XF86AudioMicMute allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
+
+{{- if .hasBattery }}
+    XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "set" "+10%"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "10%-"; }
+{{- end }}
+
+    XF86AudioNext allow-when-locked=true { spawn-sh "playerctl next"; }
+    XF86AudioPause allow-when-locked=true { spawn-sh "playerctl play-pause"; }
+    XF86AudioPlay allow-when-locked=true { spawn-sh "playerctl play-pause"; }
+    XF86AudioPrev allow-when-locked=true { spawn-sh "playerctl previous"; }
+}

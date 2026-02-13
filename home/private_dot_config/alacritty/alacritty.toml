@@ -1,0 +1,38 @@
+# Alacritty configuration
+# Generated from ~/.config/ghostty/config for feature parity where possible.
+
+[window]
+opacity = 0.9
+decorations = "Full"
+dynamic_padding = true
+
+[window.padding]
+x = 12
+y = 12
+
+[scrolling]
+# Alacritty has a finite history buffer; Ghostty unlimited scrollback is not available.
+history = 100000
+
+[cursor]
+style = { shape = "Block", blinking = "Never" }
+
+[selection]
+# Approximate Ghostty's copy-on-select behavior.
+save_to_clipboard = true
+
+[mouse]
+hide_when_typing = true
+
+[font]
+size = 12.0
+
+[window.class]
+# Keep class/app_id compatible with existing Hyprland rules targeting Ghostty.
+instance = "ghostty"
+general = "ghostty"
+
+# Note:
+# - Background blur is compositor-specific and not a native Alacritty setting.
+# - Ghostty shell-integration options do not have Alacritty equivalents.
+# - Quake/quick-terminal toggle is not built into Alacritty.

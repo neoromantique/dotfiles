@@ -3,7 +3,6 @@
 # Managed by chezmoi - edit source at ~/dotfiles
 
 source = ~/.config/hypr/colors.conf
-source = ~/.config/hypr/autostart.conf
 source = ~/.config/hypr/workspaces.conf
 source = ~/.config/hypr/monitors.conf
 
@@ -17,7 +16,7 @@ source = ~/.config/hypr/monitors.conf
 ### MY PROGRAMS ###
 ###################
 
-$terminal = ghostty
+$terminal = foot
 $fileManager = thunar
 $menu = wofi --show drun
 $run_menu = wofi --show run
@@ -51,14 +50,14 @@ decoration {
     inactive_opacity = 1.0
 
     shadow {
-        enabled = true
+        enabled = false
         range = 4
         render_power = 3
         color = rgba(1a1a1aee)
     }
 
     blur {
-        enabled = true
+        enabled = false
         size = 3
         passes = 1
         vibrancy = 0.1696
@@ -66,7 +65,7 @@ decoration {
 }
 
 animations {
-    enabled = yes
+    enabled = no
 
     bezier = easeOutQuint,0.23,1,0.32,1
     bezier = easeInOutCubic,0.65,0.05,0.36,1
@@ -97,15 +96,15 @@ animations {
 }
 
 # Smart gaps window rules
-windowrulev2 = bordersize 0, floating:0, onworkspace:w[tv1]
-windowrulev2 = rounding 0, floating:0, onworkspace:w[tv1]
-windowrulev2 = bordersize 0, floating:0, onworkspace:f[1]
-windowrulev2 = rounding 0, floating:0, onworkspace:f[1]
+windowrule = match:float false, match:workspace w[tv1], border_size 0
+windowrule = match:float false, match:workspace w[tv1], rounding 0
+windowrule = match:float false, match:workspace f[1], border_size 0
+windowrule = match:float false, match:workspace f[1], rounding 0
 
 # Quick Memo popup (yad)
-windowrulev2 = float, class:^(yad)$
-windowrulev2 = center, class:^(yad)$
-windowrulev2 = pin, class:^(yad)$
+windowrule = match:class ^(yad)$, float on
+windowrule = match:class ^(yad)$, center on
+windowrule = match:class ^(yad)$, pin on
 
 binds {
     hide_special_on_workspace_change = true
@@ -251,6 +250,11 @@ bind = , Print, exec, ~/.local/bin/screenshot
 bind = $mainMod, mouse_down, workspace, e+1
 bind = $mainMod, mouse_up, workspace, e-1
 
+# Toggle llm workspace
+bind = , mouse:279, exec, ~/.local/bin/hypr-debounce 125 hyprctl dispatch togglespecialworkspace llm
+bind = , mouse:278, hyprexpo:expo, toggle
+bind = , mouse:277, exec, ~/.local/bin/hypr-debounce 125 hyprctl dispatch workspace previous
+
 # Move/resize windows with mainMod + LMB/RMB
 bindm = $mainMod, mouse:272, movewindow
 bindm = $mainMod, mouse:273, resizewindow
@@ -274,18 +278,22 @@ bindl = , XF86AudioPrev, exec, playerctl previous
 ##############################
 
 # Window rules for apps
-windowrulev2 = workspace 1, class:^zen$
-windowrulev2 = workspace 2, class:^(chromium-work)$
-windowrulev2 = workspace special:llm, class:^(chromium-llm)$
-windowrulev2 = workspace special:llm, class:^(heynote|Heynote)$
-windowrulev2 = workspace name:tg, class:^(org.telegram.desktop)$
-windowrulev2 = workspace name:tg, class:^(discord)$
-windowrulev2 = workspace name:tg, class:^Slack$
-windowrulev2 = workspace name:tg, class:^org.mozilla.Thunderbird$
-windowrulev2 = workspace name:media, class:^spotify$
-windowrulev2 = workspace special:org, class:^ticktick$
-windowrulev2 = suppressevent maximize, class:.*
-windowrulev2 = nofocus,class:^$,title:^$,xwayland:1,floating:1,fullscreen:0,pinned:0
+windowrule = match:class ^zen$, workspace 1
+windowrule = match:class ^chromium-work$, workspace 2
+windowrule = match:initial_class ^chromium-work$, workspace 2
+windowrule = match:class ^chromium-llm$, workspace special:llm
+windowrule = match:initial_class ^chromium-llm$, workspace special:llm
+windowrule = match:class ^(heynote|Heynote)$, workspace special:llm
+windowrule = match:class ^(org.telegram.desktop)$, workspace name:tg
+windowrule = match:class ^(discord)$, workspace name:tg
+windowrule = match:class ^Slack$, workspace name:tg
+windowrule = match:class ^org.mozilla.Thunderbird$, workspace name:tg
+windowrule = match:class ^spotify$, workspace name:media
+windowrule = match:initial_class ^spotify$, workspace name:media
+windowrule = match:class ^ticktick$, workspace special:org
+windowrule = match:initial_class ^ticktick$, workspace special:org
+windowrule = match:class .*, suppress_event maximize
+windowrule = match:class ^$, match:title ^$, match:xwayland true, match:float true, match:fullscreen false, match:pin false, no_focus on
 
 #############
 ### PLUGINS ###
@@ -307,3 +315,6 @@ plugin {
 {{- end }}
     }
 }
+
+# Autostart (must be at end so windowrule rules are loaded first)
+source = ~/.config/hypr/autostart.conf

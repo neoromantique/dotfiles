@@ -1,0 +1,568 @@
+import QtQuick
+import Quickshell
+import Quickshell.Hyprland
+import Quickshell.Io
+import Quickshell.Services.SystemTray
+import Quickshell.Widgets
+
+ShellRoot {
+  id: root
+
+  property color bgColor: "#141414"
+  property color fgColor: "#cccccc"
+  property color dimColor: "#666666"
+  property color okColor: "#00ff00"
+  property color warnColor: "#ffaa00"
+  property color critColor: "#ff0000"
+
+  Process {
+    id: shellExec
+    running: false
+  }
+
+  function runShell(cmd) {
+    shellExec.command = ["/usr/bin/env", "bash", "-lc", cmd]
+    shellExec.running = true
+  }
+
+  function trim(s) {
+    return (s || "").toString().trim()
+  }
+
+  function wsLabel(name) {
+    if (name === "1") return "WEB"
+    if (name === "2") return "CODE"
+    if (name === "3") return "TERM"
+    if (name === "4") return "IDE"
+    if (name === "5") return "VM"
+    if (name === "6") return "GFX"
+    if (name === "7") return "DOC"
+    if (name === "8") return "GAME"
+    if (name === "9") return "MISC"
+    if (name === "10") return "TMP"
+    if (name === "special:termius") return "s:term"
+    if (name === "special:org") return "s:org"
+    if (name === "special:llm") return "s:llm"
+    return "WS"
+  }
+
+  function wsIgnored(name) {
+    return name === "chrome-sharing-indicator" || name === "special:chrome-sharing-indicator"
+  }
+
+  component ModuleBox: Rectangle {
+    color: "transparent"
+    border.width: 1
+    border.color: root.fgColor
+    radius: 0
+    implicitHeight: 22
+  }
+
+  Variants {
+    model: Quickshell.screens
+
+    delegate: PanelWindow {
+      id: panel
+      required property var modelData
+
+      screen: modelData
+      color: "transparent"
+      exclusionMode: ExclusionMode.Normal
+
+      anchors {
+        bottom: true
+        left: true
+        right: true
+      }
+
+      implicitHeight: 34
+
+      property var hyprMonitor: Hyprland.monitorFor(modelData)
+      visible: {{- if eq .deviceProfile "desktop" }}hyprMonitor && hyprMonitor.name === "{{ .primaryMonitor }}"{{- else }}true{{- end }}
+
+      Rectangle {
+        anchors.fill: parent
+        anchors.margins: 4
+        color: root.bgColor
+
+        Row {
+          id: mainRow
+          anchors.fill: parent
+          anchors.leftMargin: 6
+          anchors.rightMargin: 6
+          spacing: 0
+
+          Row {
+            id: leftGroup
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+
+            ModuleBox {
+              id: workspacesBox
+              implicitWidth: workspacesRow.implicitWidth + 12
+
+              Row {
+                id: workspacesRow
+                anchors.centerIn: parent
+                spacing: 6
+
+                Repeater {
+                  model: Hyprland.workspaces
+
+                  delegate: Rectangle {
+                    required property var modelData
+                    property bool ignored: root.wsIgnored(modelData.name)
+
+                    visible: !ignored
+                    color: modelData.urgent
+                      ? root.critColor
+                      : (modelData.active ? root.fgColor : "transparent")
+                    border.width: 1
+                    border.color: modelData.urgent ? root.critColor : root.fgColor
+                    radius: 0
+                    implicitHeight: 18
+                    implicitWidth: wsText.implicitWidth + 10
+
+                    Text {
+                      id: wsText
+                      anchors.centerIn: parent
+                      text: root.wsLabel(modelData.name)
+                      color: modelData.active || modelData.urgent ? "#000000" : root.fgColor
+                      font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                      font.pixelSize: 12
+                    }
+
+                    MouseArea {
+                      anchors.fill: parent
+                      acceptedButtons: Qt.LeftButton
+                      onClicked: modelData.activate()
+                    }
+                  }
+                }
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                onWheel: function(wheel) {
+                  if (wheel.angleDelta.y > 0) {
+                    Hyprland.dispatch("workspace e+1")
+                  } else if (wheel.angleDelta.y < 0) {
+                    Hyprland.dispatch("workspace e-1")
+                  }
+                }
+              }
+            }
+          }
+
+          Item {
+            width: Math.max(0, panel.width - leftGroup.implicitWidth - rightGroup.implicitWidth - 12)
+            height: 1
+          }
+
+          Row {
+            id: rightGroup
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+
+            ModuleBox {
+              id: vpnBox
+              implicitWidth: vpnText.implicitWidth + 12
+              property string vpnClass: "disconnected"
+
+              Text {
+                id: vpnText
+                anchors.centerIn: parent
+                text: "VPN off"
+                color: vpnBox.vpnClass === "connected"
+                  ? root.okColor
+                  : (vpnBox.vpnClass === "disconnected" ? root.dimColor : root.fgColor)
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Process {
+                id: vpnProc
+                command: ["/usr/bin/env", "bash", "-lc", "~/.local/bin/vpn-status"]
+                running: true
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    const raw = root.trim(this.text)
+                    try {
+                      const parsed = JSON.parse(raw)
+                      vpnText.text = parsed.text || "VPN off"
+                      vpnBox.vpnClass = parsed.class || "disconnected"
+                    } catch (_) {
+                      vpnText.text = raw || "VPN off"
+                      vpnBox.vpnClass = "disconnected"
+                    }
+                  }
+                }
+              }
+
+              Timer {
+                interval: 5000
+                running: true
+                repeat: true
+                onTriggered: vpnProc.running = true
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                onClicked: root.runShell("~/.local/bin/vpn-switcher")
+              }
+            }
+
+            ModuleBox {
+              id: spkBox
+              implicitWidth: spkText.implicitWidth + 12
+
+              Text {
+                id: spkText
+                anchors.centerIn: parent
+                text: "VOL --"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Process {
+                id: spkProc
+                command: ["/usr/bin/env", "bash", "-lc", "mute=$(pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | awk '{print $2}'); vol=$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | awk 'NR==1{print $5}'); if [ \"${mute}\" = \"yes\" ]; then echo 'VOL muted'; elif [ -n \"${vol}\" ]; then echo \"VOL ${vol}\"; else echo 'VOL --'; fi"]
+                running: true
+                stdout: StdioCollector { onStreamFinished: spkText.text = root.trim(this.text) || "VOL --" }
+              }
+
+              Timer {
+                interval: 3000
+                running: true
+                repeat: true
+                onTriggered: spkProc.running = true
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: function(mouse) {
+                  if (mouse.button === Qt.RightButton) {
+                    root.runShell("pactl set-sink-mute @DEFAULT_SINK@ toggle")
+                  } else {
+                    root.runShell("pavucontrol -t 3")
+                  }
+                  spkProc.running = true
+                }
+                onWheel: function(wheel) {
+                  if (wheel.angleDelta.y > 0) {
+                    root.runShell("~/.local/bin/audio-sink-cycle up")
+                  } else if (wheel.angleDelta.y < 0) {
+                    root.runShell("~/.local/bin/audio-sink-cycle down")
+                  }
+                  spkProc.running = true
+                }
+              }
+            }
+
+            ModuleBox {
+              id: micBox
+              implicitWidth: micText.implicitWidth + 12
+
+              Text {
+                id: micText
+                anchors.centerIn: parent
+                text: "MIC --"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Process {
+                id: micProc
+                command: ["/usr/bin/env", "bash", "-lc", "mute=$(pactl get-source-mute @DEFAULT_SOURCE@ 2>/dev/null | awk '{print $2}'); vol=$(pactl get-source-volume @DEFAULT_SOURCE@ 2>/dev/null | awk 'NR==1{print $5}'); if [ \"${mute}\" = \"yes\" ]; then echo 'MIC muted'; elif [ -n \"${vol}\" ]; then echo \"MIC ${vol}\"; else echo 'MIC --'; fi"]
+                running: true
+                stdout: StdioCollector { onStreamFinished: micText.text = root.trim(this.text) || "MIC --" }
+              }
+
+              Timer {
+                interval: 3000
+                running: true
+                repeat: true
+                onTriggered: micProc.running = true
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: function(mouse) {
+                  if (mouse.button === Qt.RightButton) {
+                    root.runShell("pactl set-source-mute @DEFAULT_SOURCE@ toggle")
+                  } else {
+                    root.runShell("pavucontrol -t 4")
+                  }
+                  micProc.running = true
+                }
+                onWheel: function(wheel) {
+                  if (wheel.angleDelta.y > 0) {
+                    root.runShell("pactl set-source-volume @DEFAULT_SOURCE@ +2%")
+                  } else if (wheel.angleDelta.y < 0) {
+                    root.runShell("pactl set-source-volume @DEFAULT_SOURCE@ -2%")
+                  }
+                  micProc.running = true
+                }
+              }
+            }
+
+            ModuleBox {
+              id: netBox
+              implicitWidth: netText.implicitWidth + 12
+
+              Text {
+                id: netText
+                anchors.centerIn: parent
+                text: "NET down"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Process {
+                id: netProc
+                command: ["/usr/bin/env", "bash", "-lc", "wifi=$(iwgetid -r 2>/dev/null || true); if [ -n \"$wifi\" ]; then sig=$(awk 'NR==3{gsub(/\./,\"\",$3); q=$3+0; printf \"%d\", int((q/70)*100)}' /proc/net/wireless 2>/dev/null); [ -z \"$sig\" ] && sig=0; echo \"NET wifi $wifi ${sig}%\"; exit; fi; iface=$(ip route | awk '/^default/{print $5; exit}'); if [ -n \"$iface\" ]; then ip4=$(ip -4 addr show dev \"$iface\" | awk '/inet /{print $2; exit}' | cut -d/ -f1); if [ -n \"$ip4\" ]; then echo \"NET eth $ip4\"; else echo 'NET link'; fi; else echo 'NET down'; fi"]
+                running: true
+                stdout: StdioCollector { onStreamFinished: netText.text = root.trim(this.text) || "NET down" }
+              }
+
+              Timer {
+                interval: 5000
+                running: true
+                repeat: true
+                onTriggered: netProc.running = true
+              }
+            }
+
+{{- if .hasBattery }}
+            ModuleBox {
+              id: batteryBox
+              implicitWidth: batteryText.implicitWidth + 12
+
+              Text {
+                id: batteryText
+                anchors.centerIn: parent
+                text: "BAT --"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Process {
+                id: batteryProc
+                command: ["/usr/bin/env", "bash", "-lc", "cap=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1); stat=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1); if [ -z \"$cap\" ]; then echo 'BAT --'; exit; fi; if [ \"$stat\" = 'Charging' ]; then echo \"BAT+ ${cap}%\"; elif [ \"$stat\" = 'Full' ]; then echo 'BAT full'; elif [ \"$stat\" = 'Not charging' ] || [ \"$stat\" = 'Unknown' ]; then echo \"BAT= ${cap}%\"; else echo \"BAT ${cap}%\"; fi"]
+                running: true
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    const v = root.trim(this.text)
+                    batteryText.text = v || "BAT --"
+                    const m = v.match(/(\d+)%/)
+                    if (v.startsWith("BAT+")) {
+                      batteryText.color = root.okColor
+                    } else if (m && Number(m[1]) <= 15) {
+                      batteryText.color = root.critColor
+                    } else if (m && Number(m[1]) <= 30) {
+                      batteryText.color = root.warnColor
+                    } else {
+                      batteryText.color = root.fgColor
+                    }
+                  }
+                }
+              }
+
+              Timer {
+                interval: 10000
+                running: true
+                repeat: true
+                onTriggered: batteryProc.running = true
+              }
+            }
+
+            ModuleBox {
+              id: brtBox
+              implicitWidth: brtText.implicitWidth + 12
+
+              Text {
+                id: brtText
+                anchors.centerIn: parent
+                text: "BRT --"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Process {
+                id: brtProc
+                command: ["/usr/bin/env", "bash", "-lc", "pct=$(brightnessctl -m 2>/dev/null | awk -F, '{print $4}' | tr -d '%'); if [ -n \"$pct\" ]; then echo \"BRT ${pct}%\"; else echo 'BRT --'; fi"]
+                running: true
+                stdout: StdioCollector { onStreamFinished: brtText.text = root.trim(this.text) || "BRT --" }
+              }
+
+              Timer {
+                interval: 5000
+                running: true
+                repeat: true
+                onTriggered: brtProc.running = true
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                onWheel: function(wheel) {
+                  if (wheel.angleDelta.y > 0) {
+                    root.runShell("brightnessctl s 5%+")
+                  } else if (wheel.angleDelta.y < 0) {
+                    root.runShell("brightnessctl s 5%-")
+                  }
+                  brtProc.running = true
+                }
+              }
+            }
+{{- end }}
+
+            ModuleBox {
+              id: cpuBox
+              implicitWidth: cpuText.implicitWidth + 12
+
+              Text {
+                id: cpuText
+                anchors.centerIn: parent
+                text: "CPU --"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Process {
+                id: cpuProc
+                command: ["/usr/bin/env", "bash", "-lc", "read -r _ u n s i _ < /proc/stat; used=$((u+n+s)); total=$((u+n+s+i)); if [ \"$total\" -gt 0 ]; then printf 'CPU %d%%\\n' $((used*100/total)); else echo 'CPU --'; fi"]
+                running: true
+                stdout: StdioCollector { onStreamFinished: cpuText.text = root.trim(this.text) || "CPU --" }
+              }
+
+              Timer {
+                interval: 5000
+                running: true
+                repeat: true
+                onTriggered: cpuProc.running = true
+              }
+            }
+
+            ModuleBox {
+              id: memBox
+              implicitWidth: memText.implicitWidth + 12
+
+              Text {
+                id: memText
+                anchors.centerIn: parent
+                text: "MEM --"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Process {
+                id: memProc
+                command: ["/usr/bin/env", "bash", "-lc", "free | awk '/Mem:/ { if ($2 > 0) printf \"MEM %d%%\\n\", int($3*100/$2); else print \"MEM --\"; }'"]
+                running: true
+                stdout: StdioCollector { onStreamFinished: memText.text = root.trim(this.text) || "MEM --" }
+              }
+
+              Timer {
+                interval: 5000
+                running: true
+                repeat: true
+                onTriggered: memProc.running = true
+              }
+            }
+
+            ModuleBox {
+              id: clockBox
+              implicitWidth: clockText.implicitWidth + 12
+
+              Text {
+                id: clockText
+                anchors.centerIn: parent
+                text: "TIME --"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Timer {
+                interval: 1000
+                running: true
+                repeat: true
+                onTriggered: {
+                  const now = new Date()
+                  clockText.text = Qt.formatDateTime(now, "'TIME' yyyy-MM-dd HH:mm")
+                }
+              }
+
+              Component.onCompleted: {
+                const now = new Date()
+                clockText.text = Qt.formatDateTime(now, "'TIME' yyyy-MM-dd HH:mm")
+              }
+            }
+
+            ModuleBox {
+              id: trayBox
+              implicitWidth: trayRow.implicitWidth + 12
+
+              Row {
+                id: trayRow
+                anchors.centerIn: parent
+                spacing: 4
+
+                Repeater {
+                  model: SystemTray.items
+
+                  delegate: Rectangle {
+                    required property var modelData
+                    color: "transparent"
+                    border.width: 0
+                    implicitWidth: 18
+                    implicitHeight: 18
+
+                    IconImage {
+                      anchors.fill: parent
+                      source: modelData.icon
+                      asynchronous: true
+                    }
+
+                    MouseArea {
+                      anchors.fill: parent
+                      acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                      onClicked: function(mouse) {
+                        if (mouse.button === Qt.RightButton && modelData.hasMenu) {
+                          modelData.display(panel, mouse.x, mouse.y)
+                        } else if (mouse.button === Qt.MiddleButton) {
+                          modelData.secondaryActivate()
+                        } else {
+                          modelData.activate()
+                        }
+                      }
+                      onWheel: function(wheel) {
+                        if (wheel.angleDelta.y > 0) {
+                          modelData.scroll(1, false)
+                        } else if (wheel.angleDelta.y < 0) {
+                          modelData.scroll(-1, false)
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
