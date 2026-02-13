@@ -7,15 +7,15 @@
 }
 
 window#waybar {
-  background: #141414;
-  color: #cccccc;
-  border: 0px solid #cccccc;
+  background: #0f0f0f;
+  color: #e0e0e0;
+  border: 1px solid #333333;
   border-radius: 0;
-  margin: 4px 6px;
-  padding: 2px 6px;
+  margin: 4px 8px;
+  padding: 2px 8px;
 }
 
-/* Boxy ASCII-ish modules */
+/* Retroism-inspired module chrome */
 #workspaces button,
 #custom-vpn,
 #pulseaudio,
@@ -26,63 +26,63 @@ window#waybar {
 #memory,
 #clock,
 #tray {
-  background: transparent;
-  color: #cccccc;
-  border: 1px dashed #cccccc;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #333333;
   border-radius: 0;
   padding: 1px 6px;
   margin: 0 3px;
 }
 
-/* Workspaces: focused/urgent with inverse/red */
+/* Workspaces */
 #workspaces button:hover {
-  background: #001900;
+  background: #232323;
 }
 #workspaces button.focused,
 #workspaces button.active {
-  background: #cccccc;
-  color: #000;
-  border-color: #cccccc;
+  background: #7a4210;
+  color: #ffffff;
+  border-color: #e67e22;
 }
 #workspaces button.urgent {
-  background: #ff0000;
-  color: #000;
-  border-color: #ff0000;
+  background: #6b1e13;
+  color: #ffffff;
+  border-color: #e74c3c;
 }
 
-/* Specials: dotted border to mark them */
+/* Specials keep a distinct dashed edge */
 #workspaces button.special {
   border-style: dotted;
 }
 
 /* VPN status colors */
 #custom-vpn.connected {
-  color: #00ff00;
-  border-color: #00ff00;
+  color: #e67e22;
+  border-color: #e67e22;
 }
 #custom-vpn.connected-no-tunnel {
-  color: #cccccc;
+  color: #e0e0e0;
 }
 #custom-vpn.disconnected {
-  color: #666666;
+  color: #888888;
 }
 
 /* Battery states */
 #battery.warning {
-  color: #ffaa00;
-  border-color: #ffaa00;
+  color: #f1c40f;
+  border-color: #f1c40f;
 }
 #battery.critical {
-  color: #ff0000;
-  border-color: #ff0000;
+  color: #e74c3c;
+  border-color: #e74c3c;
 }
 #battery.charging {
-  color: #00ff00;
+  color: #2ecc71;
 }
 
 /* Retro tooltip */
 tooltip {
-  background: #000;
-  color: #cccccc;
-  border: 1px solid #cccccc;
+  background: #0f0f0f;
+  color: #e0e0e0;
+  border: 1px solid #333333;
 }

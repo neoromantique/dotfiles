@@ -8,12 +8,14 @@ import Quickshell.Widgets
 ShellRoot {
   id: root
 
-  property color bgColor: "#141414"
-  property color fgColor: "#cccccc"
-  property color dimColor: "#666666"
-  property color okColor: "#00ff00"
-  property color warnColor: "#ffaa00"
-  property color critColor: "#ff0000"
+  property color bgColor: "#0f0f0f"
+  property color fgColor: "#e0e0e0"
+  property color dimColor: "#888888"
+  property color accentColor: "#e67e22"
+  property color okColor: "#2ecc71"
+  property color warnColor: "#f1c40f"
+  property color critColor: "#e74c3c"
+  property color borderColor: "#333333"
 
   Process {
     id: shellExec
@@ -29,21 +31,33 @@ ShellRoot {
     return (s || "").toString().trim()
   }
 
-  function wsLabel(name) {
-    if (name === "1") return "WEB"
-    if (name === "2") return "CODE"
-    if (name === "3") return "TERM"
-    if (name === "4") return "IDE"
-    if (name === "5") return "VM"
-    if (name === "6") return "GFX"
-    if (name === "7") return "DOC"
-    if (name === "8") return "GAME"
-    if (name === "9") return "MISC"
-    if (name === "10") return "TMP"
-    if (name === "special:termius") return "s:term"
-    if (name === "special:org") return "s:org"
-    if (name === "special:llm") return "s:llm"
-    return "WS"
+  property var wsNames: ({"1": "WEB", "2": "CODE", "3": "TERM", "4": "IDE", "5": "VM", "6": "GFX", "7": "DOC", "8": "GAME", "9": "MISC", "10": "TMP", "special:termius": "s:term", "special:org": "s:org", "special:llm": "s:llm"})
+
+  function setWsLabel(wsId, label) {
+    var n = Object.assign({}, wsNames)
+    n[wsId] = label
+    wsNames = n
+    wsNamesSaver.command = ["/usr/bin/env", "bash", "-c", "echo '" + JSON.stringify(n) + "' > ~/.config/quickshell/ws-names.json"]
+    wsNamesSaver.running = true
+  }
+
+  Process {
+    id: wsNamesLoader
+    command: ["/usr/bin/env", "bash", "-c", "cat ~/.config/quickshell/ws-names.json 2>/dev/null || echo '{}'"]
+    running: true
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          var loaded = JSON.parse((this.text || "{}").trim())
+          root.wsNames = Object.assign({}, root.wsNames, loaded)
+        } catch(e) {}
+      }
+    }
+  }
+
+  Process {
+    id: wsNamesSaver
+    running: false
   }
 
   function wsIgnored(name) {
@@ -51,9 +65,9 @@ ShellRoot {
   }
 
   component ModuleBox: Rectangle {
-    color: "transparent"
+    color: "#1a1a1a"
     border.width: 1
-    border.color: root.fgColor
+    border.color: root.borderColor
     radius: 0
     implicitHeight: 22
   }
@@ -67,7 +81,9 @@ ShellRoot {
 
       screen: modelData
       color: "transparent"
-      exclusionMode: ExclusionMode.Normal
+      exclusionMode: ExclusionMode.Auto
+      exclusiveZone: 34
+      aboveWindows: true
 
       anchors {
         bottom: true
@@ -84,6 +100,8 @@ ShellRoot {
         anchors.fill: parent
         anchors.margins: 4
         color: root.bgColor
+        border.width: 1
+        border.color: root.borderColor
 
         Row {
           id: mainRow
@@ -116,9 +134,9 @@ ShellRoot {
                     visible: !ignored
                     color: modelData.urgent
                       ? root.critColor
-                      : (modelData.active ? root.fgColor : "transparent")
+                      : (modelData.active ? root.accentColor : "transparent")
                     border.width: 1
-                    border.color: modelData.urgent ? root.critColor : root.fgColor
+                    border.color: modelData.urgent ? root.critColor : root.borderColor
                     radius: 0
                     implicitHeight: 18
                     implicitWidth: wsText.implicitWidth + 10
@@ -126,16 +144,27 @@ ShellRoot {
                     Text {
                       id: wsText
                       anchors.centerIn: parent
-                      text: root.wsLabel(modelData.name)
-                      color: modelData.active || modelData.urgent ? "#000000" : root.fgColor
+                      text: root.wsNames[modelData.name] || "WS"
+                      color: modelData.active || modelData.urgent ? "#111111" : root.fgColor
                       font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                       font.pixelSize: 12
                     }
 
                     MouseArea {
                       anchors.fill: parent
-                      acceptedButtons: Qt.LeftButton
-                      onClicked: modelData.activate()
+                      acceptedButtons: Qt.LeftButton | Qt.RightButton
+                      onClicked: function(mouse) {
+                        if (mouse.button === Qt.RightButton) {
+                          wsRenamePopup.wsId = modelData.name
+                          wsRenamePopup.renameX = mapToItem(null, 0, 0).x
+                          wsRenamePopup.visible = true
+                          wsRenameInput.text = root.wsNames[modelData.name] || ""
+                          wsRenameInput.selectAll()
+                          wsRenameInput.forceActiveFocus()
+                        } else {
+                          modelData.activate()
+                        }
+                      }
                     }
                   }
                 }
@@ -169,33 +198,121 @@ ShellRoot {
               id: vpnBox
               implicitWidth: vpnText.implicitWidth + 12
               property string vpnClass: "disconnected"
+              property string wgRaw: ""
+              property string nbRaw: ""
+              property string tsRaw: ""
+              property int vpnPending: 3
+
+              function updateVpnStatus() {
+                var parts = []
+                var hasTunnel = false
+
+                // Parse WireGuard interfaces (exclude NetBird wt*)
+                var wgLines = wgRaw.split("\n")
+                for (var i = 0; i < wgLines.length; i++) {
+                  var m = wgLines[i].match(/^\d+:\s+([^:@\s]+)/)
+                  if (m && !m[1].startsWith("wt")) {
+                    parts.push("WG:" + m[1])
+                    hasTunnel = true
+                  }
+                }
+
+                // Parse NetBird
+                try {
+                  var nb = JSON.parse(nbRaw)
+                  if (nb.management && nb.management.connected) {
+                    var fqdn = nb.fqdn || ""
+                    var segs = fqdn.split(".")
+                    var net = segs.length >= 2 ? segs[segs.length - 2] : "nb"
+                    var conn = (nb.peers && nb.peers.connected) || 0
+                    var tot = (nb.peers && nb.peers.total) || 0
+                    parts.push("NB:" + net + "(" + conn + "/" + tot + ")")
+                  }
+                } catch(e) {}
+
+                // Parse Tailscale
+                try {
+                  var ts = JSON.parse(tsRaw)
+                  if (ts.BackendState === "Running") {
+                    var tailnet = (ts.CurrentTailnet && ts.CurrentTailnet.Name) || ""
+                    var shortNet = tailnet.replace(/\.ts\.net$/, "").replace(/\.tail.*$/, "")
+                    var exitId = (ts.ExitNodeStatus && ts.ExitNodeStatus.ID) || ""
+                    var exitOnline = (ts.ExitNodeStatus && ts.ExitNodeStatus.Online) || false
+
+                    if (exitId && exitOnline) {
+                      var exitHost = "exit"
+                      if (ts.Peer) {
+                        var keys = Object.keys(ts.Peer)
+                        for (var j = 0; j < keys.length; j++) {
+                          if (ts.Peer[keys[j]].ExitNode) {
+                            exitHost = ts.Peer[keys[j]].HostName || "exit"
+                            break
+                          }
+                        }
+                      }
+                      parts.push("TS:" + shortNet + "→" + exitHost)
+                      hasTunnel = true
+                    } else {
+                      parts.push("TS:" + shortNet)
+                    }
+                  }
+                } catch(e) {}
+
+                if (parts.length > 0) {
+                  vpnText.text = parts.join(" | ")
+                  vpnClass = hasTunnel ? "connected" : "connected-no-tunnel"
+                } else {
+                  vpnText.text = "VPN off"
+                  vpnClass = "disconnected"
+                }
+              }
 
               Text {
                 id: vpnText
                 anchors.centerIn: parent
                 text: "VPN off"
                 color: vpnBox.vpnClass === "connected"
-                  ? root.okColor
+                  ? root.accentColor
                   : (vpnBox.vpnClass === "disconnected" ? root.dimColor : root.fgColor)
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
 
               Process {
-                id: vpnProc
-                command: ["/usr/bin/env", "bash", "-lc", "~/.local/bin/vpn-status"]
+                id: wgProc
+                command: ["/usr/bin/env", "bash", "-c", "ip link show type wireguard 2>/dev/null || true"]
                 running: true
                 stdout: StdioCollector {
                   onStreamFinished: {
-                    const raw = root.trim(this.text)
-                    try {
-                      const parsed = JSON.parse(raw)
-                      vpnText.text = parsed.text || "VPN off"
-                      vpnBox.vpnClass = parsed.class || "disconnected"
-                    } catch (_) {
-                      vpnText.text = raw || "VPN off"
-                      vpnBox.vpnClass = "disconnected"
-                    }
+                    vpnBox.wgRaw = (this.text || "").trim()
+                    vpnBox.vpnPending--
+                    if (vpnBox.vpnPending <= 0) vpnBox.updateVpnStatus()
+                  }
+                }
+              }
+
+              Process {
+                id: nbProc
+                command: ["/usr/bin/env", "bash", "-c", "command -v netbird &>/dev/null && netbird status --json 2>/dev/null || echo '{}'"]
+                running: true
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    vpnBox.nbRaw = (this.text || "").trim()
+                    vpnBox.vpnPending--
+                    if (vpnBox.vpnPending <= 0) vpnBox.updateVpnStatus()
+                  }
+                }
+              }
+
+              Process {
+                id: tsProc
+                command: ["/usr/bin/env", "bash", "-c", "command -v tailscale &>/dev/null && tailscale status --json 2>/dev/null || echo '{}'"]
+                running: true
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    vpnBox.tsRaw = (this.text || "").trim()
+                    vpnBox.vpnPending--
+                    if (vpnBox.vpnPending <= 0) vpnBox.updateVpnStatus()
                   }
                 }
               }
@@ -204,13 +321,21 @@ ShellRoot {
                 interval: 5000
                 running: true
                 repeat: true
-                onTriggered: vpnProc.running = true
+                onTriggered: {
+                  vpnBox.vpnPending = 3
+                  wgProc.running = true
+                  nbProc.running = true
+                  tsProc.running = true
+                }
               }
 
               MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.LeftButton
-                onClicked: root.runShell("~/.local/bin/vpn-switcher")
+                onClicked: {
+                  vpnPopup.visible = !vpnPopup.visible
+                  if (vpnPopup.visible) vpnPopup.refresh()
+                }
               }
             }
 
@@ -557,6 +682,457 @@ ShellRoot {
                       }
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      PanelWindow {
+        id: wsRenamePopup
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+        focusable: true
+
+        anchors {
+          top: true
+          bottom: true
+          left: true
+          right: true
+        }
+
+        property string wsId: ""
+        property real renameX: 0
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: wsRenamePopup.visible = false
+        }
+
+        Rectangle {
+          x: wsRenamePopup.renameX
+          y: parent.height - 72
+          width: 180
+          height: 26
+          color: root.bgColor
+          border.width: 1
+          border.color: root.accentColor
+          radius: 0
+
+          MouseArea {
+            anchors.fill: parent
+          }
+
+          TextInput {
+            id: wsRenameInput
+            anchors.fill: parent
+            anchors.leftMargin: 6
+            anchors.rightMargin: 6
+            verticalAlignment: TextInput.AlignVCenter
+            color: root.fgColor
+            selectionColor: root.accentColor
+            selectedTextColor: "#111111"
+            font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+            font.pixelSize: 12
+            maximumLength: 12
+            z: 1
+
+            onAccepted: {
+              if (text.trim())
+                root.setWsLabel(wsRenamePopup.wsId, text.trim())
+              wsRenamePopup.visible = false
+            }
+
+            Keys.onEscapePressed: wsRenamePopup.visible = false
+          }
+        }
+      }
+
+      PanelWindow {
+        id: vpnPopup
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors {
+          top: true
+          bottom: true
+          left: true
+          right: true
+        }
+
+        property var wgConfigs: []
+        property var wgActive: []
+        property var tsAccounts: []
+        property var tsExits: []
+        property bool tsRunning: false
+        property string tsExitId: ""
+        property int popupPending: 0
+
+        function refresh() {
+          popupPending = 2
+          popupWgProc.running = true
+          popupTsProc.running = true
+        }
+
+        function parseWgData(raw) {
+          var sections = raw.split("---A---")
+          var configsRaw = (sections[0] || "").replace("---C---", "").trim()
+          var activeRaw = (sections[1] || "").trim()
+          wgConfigs = configsRaw ? configsRaw.split("\n").filter(function(s) { return s.trim() }) : []
+          wgActive = activeRaw ? activeRaw.split(/\s+/).filter(function(s) { return s.trim() }) : []
+        }
+
+        function parseTsData(raw) {
+          var statusSplit = raw.split("---L---")
+          var statusRaw = (statusSplit[0] || "").replace("---S---", "").trim()
+          var rest = statusSplit[1] || ""
+          var exitSplit = rest.split("---E---")
+          var accountsRaw = (exitSplit[0] || "").trim()
+          var exitsRaw = (exitSplit[1] || "").trim()
+
+          try {
+            var status = JSON.parse(statusRaw)
+            tsRunning = status.BackendState === "Running"
+            tsExitId = (status.ExitNodeStatus && status.ExitNodeStatus.ID) || ""
+          } catch(e) {
+            tsRunning = false
+            tsExitId = ""
+          }
+
+          var accs = []
+          var accLines = accountsRaw.split("\n")
+          for (var i = 1; i < accLines.length; i++) {
+            var parts = accLines[i].trim().split(/\s+/)
+            if (parts.length >= 3) {
+              var acct = parts[2]
+              var isActive = acct.endsWith("*")
+              if (isActive) acct = acct.slice(0, -1)
+              accs.push({ id: parts[0], tailnet: parts[1], account: acct, active: isActive })
+            }
+          }
+          tsAccounts = accs
+
+          var exits = []
+          var exitLines = exitsRaw.split("\n")
+          for (var j = 0; j < exitLines.length; j++) {
+            var line = exitLines[j].trim()
+            if (!line || line.startsWith("IP") || line.startsWith("#") || line.startsWith("-")) continue
+            var ep = line.split(/\s+/)
+            if (ep.length >= 4) {
+              var st = ep.slice(4).join(" ")
+              if (st.toLowerCase().indexOf("offline") >= 0) continue
+              exits.push({ ip: ep[0], hostname: ep[1], short: ep[1].split(".")[0], country: ep[2], city: ep[3] })
+            }
+          }
+          tsExits = exits
+        }
+
+        function vpnAction(cmd) {
+          vpnActionProc.command = ["/usr/bin/env", "bash", "-c", cmd]
+          vpnActionProc.running = true
+          visible = false
+          vpnRefreshTimer.running = true
+        }
+
+        Process {
+          id: vpnActionProc
+          running: false
+        }
+
+        Process {
+          id: popupWgProc
+          command: ["/usr/bin/env", "bash", "-c", "echo '---C---'; vpndir='{{ .secretsPath }}/vpn'; [ -d \"$vpndir\" ] || vpndir=\"$HOME/cfg/vpn\"; for f in \"$vpndir\"/*.conf; do [ -f \"$f\" ] && basename \"$f\" .conf; done; echo '---A---'; wg show interfaces 2>/dev/null || true"]
+          running: false
+          stdout: StdioCollector {
+            onStreamFinished: {
+              vpnPopup.parseWgData((this.text || "").trim())
+              vpnPopup.popupPending--
+            }
+          }
+        }
+
+        Process {
+          id: popupTsProc
+          command: ["/usr/bin/env", "bash", "-c", "echo '---S---'; command -v tailscale &>/dev/null && tailscale status --json 2>/dev/null || echo '{}'; echo '---L---'; command -v tailscale &>/dev/null && tailscale switch --list 2>/dev/null || true; echo '---E---'; command -v tailscale &>/dev/null && tailscale exit-node list 2>/dev/null || true"]
+          running: false
+          stdout: StdioCollector {
+            onStreamFinished: {
+              vpnPopup.parseTsData((this.text || "").trim())
+              vpnPopup.popupPending--
+            }
+          }
+        }
+
+        Timer {
+          id: vpnRefreshTimer
+          interval: 1500
+          running: false
+          repeat: false
+          onTriggered: {
+            vpnBox.vpnPending = 3
+            wgProc.running = true
+            nbProc.running = true
+            tsProc.running = true
+          }
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: vpnPopup.visible = false
+        }
+
+        Rectangle {
+          id: vpnPopupRect
+          x: parent.width - 10 - rightGroup.implicitWidth
+          y: parent.height - 38 - height
+          width: 300
+          height: vpnPopupCol.implicitHeight + 16
+          color: root.bgColor
+          border.width: 1
+          border.color: root.borderColor
+
+          MouseArea {
+            anchors.fill: parent
+          }
+
+          Column {
+            id: vpnPopupCol
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 2
+            z: 1
+
+            Text {
+              text: "━━ WireGuard ━━"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 2
+              bottomPadding: 2
+            }
+
+            Repeater {
+              model: vpnPopup.wgConfigs
+
+              delegate: Rectangle {
+                required property var modelData
+                width: vpnPopupCol.width
+                height: 24
+                color: wgItemMouse.containsMouse ? "#2a2a2a" : "transparent"
+                radius: 2
+                property bool active: vpnPopup.wgActive.indexOf(modelData) >= 0
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  leftPadding: 8
+                  text: (parent.active ? "●" : "○") + "  " + modelData
+                  color: parent.active ? root.accentColor : root.fgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                }
+
+                MouseArea {
+                  id: wgItemMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  onClicked: {
+                    var dir = "{{ .secretsPath }}/vpn"
+                    if (parent.active) {
+                      vpnPopup.vpnAction("sudo ~/.local/bin/vpn-helper wg-down \"" + dir + "/" + modelData + ".conf\"")
+                    } else {
+                      vpnPopup.vpnAction("for i in $(wg show interfaces 2>/dev/null); do sudo ~/.local/bin/vpn-helper wg-down \"$i\" 2>/dev/null; done; tailscale set --exit-node= 2>/dev/null; sudo ~/.local/bin/vpn-helper wg-up \"" + dir + "/" + modelData + ".conf\"")
+                    }
+                  }
+                }
+              }
+            }
+
+            Text {
+              text: "━━ Tailscale ━━"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 6
+              bottomPadding: 2
+            }
+
+            Repeater {
+              model: vpnPopup.tsAccounts
+
+              delegate: Rectangle {
+                required property var modelData
+                width: vpnPopupCol.width
+                height: 24
+                color: tsAcctMouse.containsMouse ? "#2a2a2a" : "transparent"
+                radius: 2
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  leftPadding: 8
+                  text: (modelData.active ? "●" : "○") + "  " + modelData.tailnet + " (" + modelData.account + ")"
+                  color: modelData.active ? root.accentColor : root.fgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                }
+
+                MouseArea {
+                  id: tsAcctMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  onClicked: {
+                    if (!modelData.active)
+                      vpnPopup.vpnAction("tailscale switch '" + modelData.id + "'")
+                  }
+                }
+              }
+            }
+
+            Rectangle {
+              visible: !vpnPopup.tsRunning
+              width: vpnPopupCol.width
+              height: 24
+              color: tsStartMouse.containsMouse ? "#2a2a2a" : "transparent"
+              radius: 2
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 8
+                text: "○  Start Tailscale"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                id: tsStartMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: vpnPopup.vpnAction("tailscale up")
+              }
+            }
+
+            Text {
+              visible: vpnPopup.tsRunning
+              text: "━━ Exit Nodes ━━"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 6
+              bottomPadding: 2
+            }
+
+            Rectangle {
+              visible: vpnPopup.tsRunning && vpnPopup.tsExitId !== ""
+              width: vpnPopupCol.width
+              height: 24
+              color: exitOffMouse.containsMouse ? "#2a2a2a" : "transparent"
+              radius: 2
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 8
+                text: "●  Disconnect Exit Node"
+                color: root.accentColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                id: exitOffMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: vpnPopup.vpnAction("tailscale set --exit-node=")
+              }
+            }
+
+            Repeater {
+              model: vpnPopup.tsRunning ? vpnPopup.tsExits : []
+
+              delegate: Rectangle {
+                required property var modelData
+                width: vpnPopupCol.width
+                height: 24
+                color: exitNodeMouse.containsMouse ? "#2a2a2a" : "transparent"
+                radius: 2
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  leftPadding: 8
+                  text: "○  " + modelData.short + " (" + modelData.country + "/" + modelData.city + ")"
+                  color: root.fgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                }
+
+                MouseArea {
+                  id: exitNodeMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  onClicked: {
+                    vpnPopup.vpnAction("for i in $(wg show interfaces 2>/dev/null); do sudo ~/.local/bin/vpn-helper wg-down \"$i\" 2>/dev/null; done; tailscale set --exit-node='" + modelData.ip + "'")
+                  }
+                }
+              }
+            }
+
+            Rectangle {
+              visible: vpnPopup.tsRunning
+              width: vpnPopupCol.width
+              height: 24
+              color: tsStopMouse.containsMouse ? "#2a2a2a" : "transparent"
+              radius: 2
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 8
+                text: "⊘  Stop Tailscale"
+                color: root.dimColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                id: tsStopMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: vpnPopup.vpnAction("tailscale down")
+              }
+            }
+
+            Rectangle {
+              width: vpnPopupCol.width
+              height: 1
+              color: root.borderColor
+            }
+
+            Rectangle {
+              width: vpnPopupCol.width
+              height: 24
+              color: disconnAllMouse.containsMouse ? "#2a2a2a" : "transparent"
+              radius: 2
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 8
+                text: "⊘  Disconnect All"
+                color: root.critColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                id: disconnAllMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: {
+                  vpnPopup.vpnAction("for i in $(wg show interfaces 2>/dev/null); do sudo ~/.local/bin/vpn-helper wg-down \"$i\" 2>/dev/null; done; tailscale set --exit-node= 2>/dev/null || true")
                 }
               }
             }

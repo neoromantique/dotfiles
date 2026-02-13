@@ -16,7 +16,7 @@ source = ~/.config/hypr/monitors.conf
 ### MY PROGRAMS ###
 ###################
 
-$terminal = foot
+$terminal = alacritty
 $fileManager = thunar
 $menu = wofi --show drun
 $run_menu = wofi --show run
@@ -27,40 +27,43 @@ $run_menu = wofi --show run
 
 env = XCURSOR_SIZE,24
 env = HYPRCURSOR_SIZE,24
+env = QT_WAYLAND_DISABLE_WINDOWDECORATION,1
+env = GTK_CSD,0
+
+# Cursor behavior (avoids hw cursor glitches on some setups)
+cursor {
+    no_hardware_cursors = true
+}
 
 #####################
 ### LOOK AND FEEL ###
 #####################
 
 general {
-    gaps_in = 2
-    gaps_out = 5
-    border_size = 2
-    col.active_border = rgba(33ccffee) rgba(00ff99ee) 45deg
-    col.inactive_border = rgba(595959aa)
-    resize_on_border = false
+    gaps_in = 0
+    gaps_out = 0
+    border_size = 1
+    col.active_border = rgb(e67e22)
+    col.inactive_border = rgb(333333)
+    resize_on_border = true
     allow_tearing = false
     layout = dwindle
 }
 
 decoration {
-    rounding = 10
-    rounding_power = 2
+    rounding = 0
     active_opacity = 1.0
     inactive_opacity = 1.0
 
     shadow {
         enabled = false
-        range = 4
-        render_power = 3
-        color = rgba(1a1a1aee)
+        range = 2
+        render_power = 5
+        color = rgba(000000d9)
     }
 
     blur {
         enabled = false
-        size = 3
-        passes = 1
-        vibrancy = 0.1696
     }
 }
 
@@ -125,8 +128,8 @@ master {
 }
 
 misc {
-    force_default_wallpaper = -1
-    disable_hyprland_logo = false
+    force_default_wallpaper = 0
+    disable_hyprland_logo = true
     enable_anr_dialog = false
 }
 
@@ -303,7 +306,7 @@ plugin {
     hyprexpo {
         columns = 3
         gap_size = 5
-        bg_col = rgb(111111)
+        bg_col = rgb(0f0f0f)
         workspace_method = first 1
 {{- if .hasTouchpad }}
         enable_gesture = true
