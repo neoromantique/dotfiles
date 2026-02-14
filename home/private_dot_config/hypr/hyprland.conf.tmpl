@@ -222,9 +222,9 @@ bind = SUPER, F12, exec, ~/.local/bin/workspace-pin 1337
 bind = SUPER, A, togglespecialworkspace, org
 bind = SUPER SHIFT, A, movetoworkspace, special:org
 
-# Quick Memo (jax-bot integration)
-bind = , F12, exec, ~/.local/bin/quick-memo --input
-bind = SHIFT, F12, exec, ~/.local/bin/quick-memo --clipboard
+# Quick Memo (QuickShell)
+bind = , F12, exec, touch /tmp/qs-memo-input
+bind = SHIFT, F12, exec, touch /tmp/qs-memo-clip
 bind = SUPER, X, workspace, name:media
 bind = SUPER SHIFT, X, movetoworkspace, name:media
 bind = SUPER SHIFT, C, movetoworkspace, name:tg
@@ -304,8 +304,8 @@ windowrule = match:class ^$, match:title ^$, match:xwayland true, match:float tr
 
 plugin {
     hyprexpo {
-        columns = 3
-        gap_size = 5
+        columns = 4
+        gap_size = 0
         bg_col = rgb(0f0f0f)
         workspace_method = first 1
 {{- if .hasTouchpad }}

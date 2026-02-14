@@ -31,7 +31,7 @@ ShellRoot {
     return (s || "").toString().trim()
   }
 
-  property var wsNames: ({"1": "WEB", "2": "CODE", "3": "TERM", "4": "IDE", "5": "VM", "6": "GFX", "7": "DOC", "8": "GAME", "9": "MISC", "10": "TMP", "special:termius": "s:term", "special:org": "s:org", "special:llm": "s:llm"})
+  property var wsNames: ({"1": "WEB", "2": "CODE", "3": "TERM", "4": "IDE", "5": "VM", "6": "GFX", "7": "DOC", "8": "GAME", "9": "MISC", "10": "TMP", "11": "AUX1", "12": "AUX2", "13": "AUX3", "14": "AUX4", "15": "AUX5", "special:termius": "s:term", "special:org": "s:org", "special:llm": "s:llm"})
 
   function setWsLabel(wsId, label) {
     var n = Object.assign({}, wsNames)
@@ -359,13 +359,6 @@ ShellRoot {
                 stdout: StdioCollector { onStreamFinished: spkText.text = root.trim(this.text) || "VOL --" }
               }
 
-              Timer {
-                interval: 3000
-                running: true
-                repeat: true
-                onTriggered: spkProc.running = true
-              }
-
               MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -373,17 +366,16 @@ ShellRoot {
                   if (mouse.button === Qt.RightButton) {
                     root.runShell("pactl set-sink-mute @DEFAULT_SINK@ toggle")
                   } else {
-                    root.runShell("pavucontrol -t 3")
+                    sinkPopup.visible = !sinkPopup.visible
+                    if (sinkPopup.visible) sinkPopup.refresh()
                   }
-                  spkProc.running = true
                 }
                 onWheel: function(wheel) {
                   if (wheel.angleDelta.y > 0) {
-                    root.runShell("~/.local/bin/audio-sink-cycle up")
+                    root.runShell("pactl set-sink-volume @DEFAULT_SINK@ +2%")
                   } else if (wheel.angleDelta.y < 0) {
-                    root.runShell("~/.local/bin/audio-sink-cycle down")
+                    root.runShell("pactl set-sink-volume @DEFAULT_SINK@ -2%")
                   }
-                  spkProc.running = true
                 }
               }
             }
@@ -408,13 +400,6 @@ ShellRoot {
                 stdout: StdioCollector { onStreamFinished: micText.text = root.trim(this.text) || "MIC --" }
               }
 
-              Timer {
-                interval: 3000
-                running: true
-                repeat: true
-                onTriggered: micProc.running = true
-              }
-
               MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -422,9 +407,9 @@ ShellRoot {
                   if (mouse.button === Qt.RightButton) {
                     root.runShell("pactl set-source-mute @DEFAULT_SOURCE@ toggle")
                   } else {
-                    root.runShell("pavucontrol -t 4")
+                    sourcePopup.visible = !sourcePopup.visible
+                    if (sourcePopup.visible) sourcePopup.refresh()
                   }
-                  micProc.running = true
                 }
                 onWheel: function(wheel) {
                   if (wheel.angleDelta.y > 0) {
@@ -432,7 +417,6 @@ ShellRoot {
                   } else if (wheel.angleDelta.y < 0) {
                     root.runShell("pactl set-source-volume @DEFAULT_SOURCE@ -2%")
                   }
-                  micProc.running = true
                 }
               }
             }
@@ -552,6 +536,209 @@ ShellRoot {
 {{- end }}
 
             ModuleBox {
+              id: pomBox
+              implicitWidth: pomText.implicitWidth + 12
+
+              property string pomState: "idle"
+              property int pomSeconds: 0
+              property int pomCount: 0
+              property int totalPoms: 0
+              property int totalFocusMins: 0
+              property bool pomBlink: false
+              property int workMins: 25
+              property int breakMins: 5
+              property int longBreakMins: 15
+
+              function fmt(s) {
+                var m = Math.floor(s / 60)
+                var ss = s % 60
+                return (m < 10 ? "0" : "") + m + ":" + (ss < 10 ? "0" : "") + ss
+              }
+
+              function update() {
+                if (pomState === "idle") {
+                  pomText.text = "POM off"
+                  pomText.color = root.dimColor
+                  return
+                }
+                var c = pomState === "work" ? " " + (pomCount + 1) + "/4" : pomCount > 0 ? " " + pomCount + "/4" : ""
+                if (pomState === "work") {
+                  pomText.text = "POM " + fmt(pomSeconds) + c
+                  pomText.color = pomSeconds <= 60 ? root.critColor : root.accentColor
+                } else if (pomState === "break" || pomState === "longbreak") {
+                  pomText.text = "BRK " + fmt(pomSeconds) + c
+                  pomText.color = pomSeconds <= 60 ? root.warnColor : root.okColor
+                } else if (pomState === "done") {
+                  pomText.text = pomBlink ? ">>> GO <<<" : "    GO    "
+                  pomText.color = root.critColor
+                }
+              }
+
+              function startWork() {
+                pomState = "work"
+                pomSeconds = workMins * 60
+                pomBlinkTimer.running = false
+                pomBlink = false
+                pomTimer.running = true
+                pomFlash.dismiss()
+                update()
+              }
+
+              function startBreak() {
+                pomCount++
+                totalPoms++
+                totalFocusMins += workMins
+                if (pomCount >= 4) {
+                  pomState = "longbreak"
+                  pomSeconds = longBreakMins * 60
+                  pomCount = 0
+                  pomFlash.show("LONG BREAK", root.okColor)
+                } else {
+                  pomState = "break"
+                  pomSeconds = breakMins * 60
+                  pomFlash.show("BREAK", root.okColor)
+                }
+                pomTimer.running = true
+                update()
+                root.runShell("notify-send -u normal 'Pomodoro' 'Take a break!'")
+              }
+
+              function goDone() {
+                pomState = "done"
+                pomTimer.running = false
+                pomBlinkTimer.running = true
+                pomFlash.show("GET BACK TO WORK", root.critColor)
+                update()
+                root.runShell("notify-send -u critical 'Pomodoro' 'Break over. Get back to work.'")
+              }
+
+              function reset() {
+                pomState = "idle"
+                pomSeconds = 0
+                pomCount = 0
+                pomBlink = false
+                pomTimer.running = false
+                pomBlinkTimer.running = false
+                pomFlash.dismiss()
+                update()
+              }
+
+              function saveSettings() {
+                pomSettingsSaver.command = ["/usr/bin/env", "bash", "-c",
+                  "echo '" + JSON.stringify({work: workMins, brk: breakMins, lng: longBreakMins}) + "' > ~/.config/quickshell/pom-settings.json"]
+                pomSettingsSaver.running = true
+              }
+
+              Process {
+                id: pomSettingsLoader
+                command: ["/usr/bin/env", "bash", "-c", "cat ~/.config/quickshell/pom-settings.json 2>/dev/null || echo '{}'"]
+                running: true
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    try {
+                      var s = JSON.parse((this.text || "{}").trim())
+                      if (s.work) pomBox.workMins = s.work
+                      if (s.brk) pomBox.breakMins = s.brk
+                      if (s.lng) pomBox.longBreakMins = s.lng
+                    } catch(e) {}
+                  }
+                }
+              }
+
+              Process {
+                id: pomSettingsSaver
+                running: false
+              }
+
+              Timer {
+                id: pomTimer
+                interval: 1000
+                repeat: true
+                onTriggered: {
+                  pomBox.pomSeconds--
+                  if (pomBox.pomSeconds <= 0) {
+                    if (pomBox.pomState === "work") pomBox.startBreak()
+                    else pomBox.goDone()
+                  } else {
+                    pomBox.update()
+                  }
+                }
+              }
+
+              Timer {
+                id: pomBlinkTimer
+                interval: 500
+                repeat: true
+                onTriggered: { pomBox.pomBlink = !pomBox.pomBlink; pomBox.update() }
+              }
+
+              Text {
+                id: pomText
+                anchors.centerIn: parent
+                text: "POM off"
+                color: root.dimColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: function(mouse) {
+                  if (mouse.button === Qt.RightButton) {
+                    pomPopup.visible = !pomPopup.visible
+                  } else {
+                    if (pomBox.pomState === "idle" || pomBox.pomState === "done")
+                      pomBox.startWork()
+                    else
+                      pomTimer.running = !pomTimer.running
+                  }
+                }
+              }
+            }
+
+            ModuleBox {
+              id: memoBox
+              implicitWidth: memoBoxText.implicitWidth + 12
+              property int todayCount: 0
+
+              Text {
+                id: memoBoxText
+                anchors.centerIn: parent
+                text: memoBox.todayCount > 0 ? "MEMO " + memoBox.todayCount : "MEMO"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              Process {
+                id: memoCountProc
+                command: ["/usr/bin/env", "bash", "-c", "today=$(date +%Y-%m-%d); grep -c \"$today\" ~/.local/share/quickmemo/notes.jsonl 2>/dev/null || echo 0"]
+                running: true
+                stdout: StdioCollector {
+                  onStreamFinished: memoBox.todayCount = parseInt(root.trim(this.text)) || 0
+                }
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: function(mouse) {
+                  if (mouse.button === Qt.RightButton) {
+                    memoReview.refresh()
+                    memoReview.visible = !memoReview.visible
+                  } else {
+                    memoInput.visible = !memoInput.visible
+                    if (memoInput.visible) {
+                      memoInputField.text = ""
+                      memoInputField.forceActiveFocus()
+                    }
+                  }
+                }
+              }
+            }
+
+            ModuleBox {
               id: cpuBox
               implicitWidth: cpuText.implicitWidth + 12
 
@@ -634,6 +821,15 @@ ShellRoot {
                 const now = new Date()
                 clockText.text = Qt.formatDateTime(now, "'TIME' yyyy-MM-dd HH:mm")
               }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                onClicked: {
+                  calPopup.visible = !calPopup.visible
+                  if (calPopup.visible) calPopup.resetToToday()
+                }
+              }
             }
 
             ModuleBox {
@@ -681,6 +877,586 @@ ShellRoot {
                         }
                       }
                     }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      Process {
+        id: paSubscribe
+        command: ["/usr/bin/env", "bash", "-c", "pactl subscribe 2>/dev/null"]
+        running: true
+        stdout: SplitParser {
+          onRead: function(line) {
+            if (line.indexOf("sink") >= 0 || line.indexOf("server") >= 0)
+              spkDebounce.restart()
+            if (line.indexOf("source") >= 0 || line.indexOf("server") >= 0)
+              micDebounce.restart()
+          }
+        }
+        onRunningChanged: {
+          if (!running) paResubscribe.running = true
+        }
+      }
+
+      Timer {
+        id: paResubscribe
+        interval: 2000
+        repeat: false
+        onTriggered: paSubscribe.running = true
+      }
+
+      Timer {
+        id: spkDebounce
+        interval: 50
+        repeat: false
+        onTriggered: spkProc.running = true
+      }
+
+      Timer {
+        id: micDebounce
+        interval: 50
+        repeat: false
+        onTriggered: micProc.running = true
+      }
+
+      Timer {
+        interval: 10000
+        running: true
+        repeat: true
+        onTriggered: { spkProc.running = true; micProc.running = true }
+      }
+
+      Timer {
+        interval: 150
+        running: true
+        repeat: true
+        onTriggered: memoTriggerCheck.running = true
+      }
+
+      Process {
+        id: memoTriggerCheck
+        command: ["/usr/bin/env", "bash", "-c", "r=''; [ -f /tmp/qs-memo-input ] && rm /tmp/qs-memo-input && r=\"input\n\"; [ -f /tmp/qs-memo-clip ] && rm /tmp/qs-memo-clip && r=\"${r}clipboard\"; printf '%s' \"$r\""]
+        running: false
+        stdout: StdioCollector {
+          onStreamFinished: {
+            var t = (this.text || "").trim()
+            if (t.indexOf("input") >= 0) {
+              memoInput.visible = true
+              memoInputField.text = ""
+              memoInputField.forceActiveFocus()
+            }
+            if (t.indexOf("clipboard") >= 0)
+              memoClipCapture.running = true
+          }
+        }
+      }
+
+      Process {
+        id: memoClipCapture
+        command: ["/usr/bin/env", "bash", "-c", "wl-paste 2>/dev/null || true"]
+        running: false
+        stdout: StdioCollector {
+          onStreamFinished: {
+            var text = (this.text || "").trim()
+            if (text) {
+              panel.memoSave(text, "clipboard")
+              root.runShell("notify-send -r 91192 -t 2000 'Quick Memo' 'Clipboard saved'")
+            }
+          }
+        }
+      }
+
+      function memoSave(text, src) {
+        var entry = JSON.stringify({ts: new Date().toISOString(), text: text, src: src || "input"})
+        var b64 = Qt.btoa(entry)
+        memoSaveProc.command = ["/usr/bin/env", "bash", "-c",
+          "mkdir -p ~/.local/share/quickmemo && printf '%s' " + b64 + " | base64 -d >> ~/.local/share/quickmemo/notes.jsonl && printf '\\n' >> ~/.local/share/quickmemo/notes.jsonl"]
+        memoSaveProc.running = true
+        memoBox.todayCount++
+      }
+
+      Process {
+        id: memoSaveProc
+        running: false
+      }
+
+      PanelWindow {
+        id: sinkPopup
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors {
+          top: true
+          bottom: true
+          left: true
+          right: true
+        }
+
+        property var sinks: []
+        property string defaultSink: ""
+
+        function refresh() {
+          sinkListProc.running = true
+        }
+
+        function parseSinks(raw) {
+          var sections = raw.split("---DEF---")
+          var listRaw = (sections[0] || "").replace("---LIST---", "").trim()
+          var defRaw = (sections[1] || "").trim()
+          defaultSink = defRaw
+
+          var items = []
+          var lines = listRaw.split("\n")
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim()
+            if (!line) continue
+            var tabIdx = line.indexOf("\t")
+            if (tabIdx < 0) continue
+            var name = line.substring(0, tabIdx)
+            var desc = line.substring(tabIdx + 1)
+            items.push({ name: name, desc: desc, active: name === defRaw })
+          }
+          sinks = items
+        }
+
+        function setDefault(name) {
+          sinkActionProc.command = ["/usr/bin/env", "bash", "-c", "pactl set-default-sink '" + name + "'"]
+          sinkActionProc.running = true
+          visible = false
+          sinkRefreshTimer.running = true
+        }
+
+        Process {
+          id: sinkListProc
+          command: ["/usr/bin/env", "bash", "-c", "echo '---LIST---'; pactl list sinks 2>/dev/null | awk '/^\\tName:/{name=$2} /^\\tDescription:/{sub(/^\\tDescription: /,\"\"); print name\"\\t\"$0}'; echo '---DEF---'; pactl get-default-sink 2>/dev/null"]
+          running: false
+          stdout: StdioCollector {
+            onStreamFinished: sinkPopup.parseSinks((this.text || "").trim())
+          }
+        }
+
+        Process {
+          id: sinkActionProc
+          running: false
+        }
+
+        Timer {
+          id: sinkRefreshTimer
+          interval: 500
+          running: false
+          repeat: false
+          onTriggered: spkProc.running = true
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: sinkPopup.visible = false
+        }
+
+        Rectangle {
+          x: parent.width - 10 - rightGroup.implicitWidth + vpnBox.implicitWidth + 6
+          y: parent.height - 38 - height
+          width: Math.max(250, sinkCol.implicitWidth + 16)
+          height: sinkCol.implicitHeight + 16
+          color: root.bgColor
+          border.width: 1
+          border.color: root.borderColor
+
+          MouseArea {
+            anchors.fill: parent
+          }
+
+          Column {
+            id: sinkCol
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 2
+            z: 1
+
+            Text {
+              text: "━━ Output Devices ━━"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 2
+              bottomPadding: 2
+            }
+
+            Repeater {
+              model: sinkPopup.sinks
+
+              delegate: Rectangle {
+                required property var modelData
+                width: sinkCol.width
+                height: 24
+                color: sinkItemMouse.containsMouse ? "#2a2a2a" : "transparent"
+                radius: 2
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  leftPadding: 8
+                  text: (modelData.active ? "●" : "○") + "  " + modelData.desc
+                  color: modelData.active ? root.accentColor : root.fgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                  elide: Text.ElideRight
+                  width: sinkCol.width - 8
+                }
+
+                MouseArea {
+                  id: sinkItemMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  onClicked: sinkPopup.setDefault(modelData.name)
+                }
+              }
+            }
+          }
+        }
+      }
+
+      PanelWindow {
+        id: sourcePopup
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors {
+          top: true
+          bottom: true
+          left: true
+          right: true
+        }
+
+        property var sources: []
+        property string defaultSource: ""
+
+        function refresh() {
+          sourceListProc.running = true
+        }
+
+        function parseSources(raw) {
+          var sections = raw.split("---DEF---")
+          var listRaw = (sections[0] || "").replace("---LIST---", "").trim()
+          var defRaw = (sections[1] || "").trim()
+          defaultSource = defRaw
+
+          var items = []
+          var lines = listRaw.split("\n")
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim()
+            if (!line) continue
+            var tabIdx = line.indexOf("\t")
+            if (tabIdx < 0) continue
+            var name = line.substring(0, tabIdx)
+            var desc = line.substring(tabIdx + 1)
+            items.push({ name: name, desc: desc, active: name === defRaw })
+          }
+          sources = items
+        }
+
+        function setDefault(name) {
+          sourceActionProc.command = ["/usr/bin/env", "bash", "-c", "pactl set-default-source '" + name + "'"]
+          sourceActionProc.running = true
+          visible = false
+          sourceRefreshTimer.running = true
+        }
+
+        Process {
+          id: sourceListProc
+          command: ["/usr/bin/env", "bash", "-c", "echo '---LIST---'; pactl list sources 2>/dev/null | awk '/^\\tName:/{name=$2} /^\\tDescription:/{sub(/^\\tDescription: /,\"\"); print name\"\\t\"$0}' | grep -v '\\.monitor'; echo '---DEF---'; pactl get-default-source 2>/dev/null"]
+          running: false
+          stdout: StdioCollector {
+            onStreamFinished: sourcePopup.parseSources((this.text || "").trim())
+          }
+        }
+
+        Process {
+          id: sourceActionProc
+          running: false
+        }
+
+        Timer {
+          id: sourceRefreshTimer
+          interval: 500
+          running: false
+          repeat: false
+          onTriggered: micProc.running = true
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: sourcePopup.visible = false
+        }
+
+        Rectangle {
+          x: parent.width - 10 - rightGroup.implicitWidth + vpnBox.implicitWidth + spkBox.implicitWidth + 12
+          y: parent.height - 38 - height
+          width: Math.max(250, sourceCol.implicitWidth + 16)
+          height: sourceCol.implicitHeight + 16
+          color: root.bgColor
+          border.width: 1
+          border.color: root.borderColor
+
+          MouseArea {
+            anchors.fill: parent
+          }
+
+          Column {
+            id: sourceCol
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 2
+            z: 1
+
+            Text {
+              text: "━━ Input Devices ━━"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 2
+              bottomPadding: 2
+            }
+
+            Repeater {
+              model: sourcePopup.sources
+
+              delegate: Rectangle {
+                required property var modelData
+                width: sourceCol.width
+                height: 24
+                color: srcItemMouse.containsMouse ? "#2a2a2a" : "transparent"
+                radius: 2
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  leftPadding: 8
+                  text: (modelData.active ? "●" : "○") + "  " + modelData.desc
+                  color: modelData.active ? root.accentColor : root.fgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                  elide: Text.ElideRight
+                  width: sourceCol.width - 8
+                }
+
+                MouseArea {
+                  id: srcItemMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  onClicked: sourcePopup.setDefault(modelData.name)
+                }
+              }
+            }
+          }
+        }
+      }
+
+      PanelWindow {
+        id: calPopup
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors {
+          top: true
+          bottom: true
+          left: true
+          right: true
+        }
+
+        property int calYear: new Date().getFullYear()
+        property int calMonth: new Date().getMonth()
+        property var calDays: []
+
+        function resetToToday() {
+          var now = new Date()
+          calYear = now.getFullYear()
+          calMonth = now.getMonth()
+          buildDays()
+        }
+
+        function changeMonth(delta) {
+          var m = calMonth + delta
+          var y = calYear
+          while (m < 0) { m += 12; y-- }
+          while (m > 11) { m -= 12; y++ }
+          calMonth = m
+          calYear = y
+          buildDays()
+        }
+
+        function buildDays() {
+          var first = new Date(calYear, calMonth, 1)
+          var startDow = (first.getDay() + 6) % 7
+          var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+          var prevMonthDays = new Date(calYear, calMonth, 0).getDate()
+
+          var today = new Date()
+          var isCurrentMonth = (today.getFullYear() === calYear && today.getMonth() === calMonth)
+          var todayDate = today.getDate()
+
+          var cells = []
+          for (var i = 0; i < startDow; i++)
+            cells.push({ day: prevMonthDays - startDow + 1 + i, current: false, today: false })
+          for (var d = 1; d <= daysInMonth; d++)
+            cells.push({ day: d, current: true, today: isCurrentMonth && d === todayDate })
+          var remainder = 42 - cells.length
+          for (var r = 1; r <= remainder; r++)
+            cells.push({ day: r, current: false, today: false })
+
+          calDays = cells
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: calPopup.visible = false
+        }
+
+        Rectangle {
+          id: calRect
+          x: parent.width - 16 - clockBox.implicitWidth - trayBox.implicitWidth
+          y: parent.height - 38 - height
+          width: 7 * 30 + 16
+          height: calCol.implicitHeight + 16
+          color: root.bgColor
+          border.width: 1
+          border.color: root.borderColor
+
+          MouseArea {
+            anchors.fill: parent
+            onWheel: function(wheel) {
+              if (wheel.angleDelta.y > 0) calPopup.changeMonth(-1)
+              else if (wheel.angleDelta.y < 0) calPopup.changeMonth(1)
+            }
+          }
+
+          Column {
+            id: calCol
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 4
+            z: 1
+
+            Row {
+              width: parent.width
+              height: 24
+
+              Rectangle {
+                width: 30
+                height: 24
+                color: calPrevMouse.containsMouse ? "#2a2a2a" : "transparent"
+                radius: 2
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "◄"
+                  color: root.fgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                }
+
+                MouseArea {
+                  id: calPrevMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  onClicked: calPopup.changeMonth(-1)
+                }
+              }
+
+              Item {
+                width: parent.width - 60
+                height: 24
+
+                Text {
+                  anchors.centerIn: parent
+                  text: Qt.formatDate(new Date(calPopup.calYear, calPopup.calMonth, 1), "MMMM yyyy")
+                  color: root.fgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                }
+              }
+
+              Rectangle {
+                width: 30
+                height: 24
+                color: calNextMouse.containsMouse ? "#2a2a2a" : "transparent"
+                radius: 2
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "►"
+                  color: root.fgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                }
+
+                MouseArea {
+                  id: calNextMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  onClicked: calPopup.changeMonth(1)
+                }
+              }
+            }
+
+            Grid {
+              columns: 7
+              spacing: 0
+              width: parent.width
+
+              Repeater {
+                model: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+
+                delegate: Item {
+                  required property var modelData
+                  width: 30
+                  height: 20
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: modelData
+                    color: root.dimColor
+                    font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                    font.pixelSize: 11
+                  }
+                }
+              }
+            }
+
+            Grid {
+              columns: 7
+              spacing: 0
+              width: parent.width
+
+              Repeater {
+                model: calPopup.calDays
+
+                delegate: Rectangle {
+                  required property var modelData
+                  width: 30
+                  height: 24
+                  radius: 2
+                  color: modelData.today ? root.accentColor : "transparent"
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: modelData.day
+                    color: modelData.today
+                      ? "#111111"
+                      : (modelData.current ? root.fgColor : root.dimColor)
+                    font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                    font.pixelSize: 12
                   }
                 }
               }
@@ -1133,6 +1909,757 @@ ShellRoot {
                 hoverEnabled: true
                 onClicked: {
                   vpnPopup.vpnAction("for i in $(wg show interfaces 2>/dev/null); do sudo ~/.local/bin/vpn-helper wg-down \"$i\" 2>/dev/null; done; tailscale set --exit-node= 2>/dev/null || true")
+                }
+              }
+            }
+          }
+        }
+      }
+      PanelWindow {
+        id: pomFlash
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors {
+          top: true
+          bottom: true
+          left: true
+          right: true
+        }
+
+        property string flashText: ""
+        property color flashColor: root.critColor
+        property bool flashOn: true
+
+        function show(text, col) {
+          flashText = text
+          flashColor = col
+          flashOn = true
+          visible = true
+          flashAnim.running = true
+          flashAutoClose.running = true
+        }
+
+        function dismiss() {
+          visible = false
+          flashAnim.running = false
+          flashAutoClose.running = false
+        }
+
+        Timer {
+          id: flashAnim
+          interval: 400
+          repeat: true
+          onTriggered: pomFlash.flashOn = !pomFlash.flashOn
+        }
+
+        Timer {
+          id: flashAutoClose
+          interval: 10000
+          repeat: false
+          onTriggered: pomFlash.dismiss()
+        }
+
+        Rectangle {
+          anchors.fill: parent
+          color: pomFlash.flashOn ? "#000000E0" : "#000000A0"
+
+          MouseArea {
+            anchors.fill: parent
+            onClicked: {
+              pomFlash.dismiss()
+              if (pomBox.pomState === "done") pomBox.startWork()
+            }
+          }
+
+          Column {
+            anchors.centerIn: parent
+            spacing: 16
+
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: pomFlash.flashText
+              color: pomFlash.flashOn ? pomFlash.flashColor : "#333333"
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 72
+            }
+
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: pomBox.pomState === "done" ? "click anywhere to start" : "click to dismiss"
+              color: "#666666"
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 14
+            }
+          }
+        }
+      }
+
+      PanelWindow {
+        id: pomPopup
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors {
+          top: true
+          bottom: true
+          left: true
+          right: true
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: pomPopup.visible = false
+        }
+
+        Rectangle {
+          x: parent.width - 10 - rightGroup.implicitWidth + vpnBox.implicitWidth + spkBox.implicitWidth + micBox.implicitWidth + netBox.implicitWidth + 24
+{{- if .hasBattery }}
+            + batteryBox.implicitWidth + brtBox.implicitWidth + 12
+{{- end }}
+          y: parent.height - 38 - height
+          width: 220
+          height: pomPopupCol.implicitHeight + 16
+          color: root.bgColor
+          border.width: 1
+          border.color: root.borderColor
+
+          MouseArea {
+            anchors.fill: parent
+          }
+
+          Column {
+            id: pomPopupCol
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 2
+            z: 1
+
+            Text {
+              text: "━━ Settings ━━"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 2
+              bottomPadding: 2
+            }
+
+            Rectangle {
+              width: pomPopupCol.width
+              height: 24
+              color: "transparent"
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 8
+                text: "Work         " + pomBox.workMins + " min"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                onWheel: function(wheel) {
+                  if (wheel.angleDelta.y > 0) pomBox.workMins = Math.min(90, pomBox.workMins + 5)
+                  else pomBox.workMins = Math.max(5, pomBox.workMins - 5)
+                  pomBox.saveSettings()
+                }
+              }
+            }
+
+            Rectangle {
+              width: pomPopupCol.width
+              height: 24
+              color: "transparent"
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 8
+                text: "Break         " + pomBox.breakMins + " min"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                onWheel: function(wheel) {
+                  if (wheel.angleDelta.y > 0) pomBox.breakMins = Math.min(30, pomBox.breakMins + 1)
+                  else pomBox.breakMins = Math.max(1, pomBox.breakMins - 1)
+                  pomBox.saveSettings()
+                }
+              }
+            }
+
+            Rectangle {
+              width: pomPopupCol.width
+              height: 24
+              color: "transparent"
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 8
+                text: "Long Break   " + pomBox.longBreakMins + " min"
+                color: root.fgColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                onWheel: function(wheel) {
+                  if (wheel.angleDelta.y > 0) pomBox.longBreakMins = Math.min(45, pomBox.longBreakMins + 5)
+                  else pomBox.longBreakMins = Math.max(5, pomBox.longBreakMins - 5)
+                  pomBox.saveSettings()
+                }
+              }
+            }
+
+            Text {
+              text: "━━ Session ━━"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 6
+              bottomPadding: 2
+            }
+
+            Text {
+              leftPadding: 8
+              text: "Completed    " + pomBox.totalPoms + " poms"
+              color: root.fgColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+              height: 24
+              verticalAlignment: Text.AlignVCenter
+            }
+
+            Text {
+              leftPadding: 8
+              text: "Focus time   " + pomBox.totalFocusMins + " min"
+              color: root.fgColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+              height: 24
+              verticalAlignment: Text.AlignVCenter
+            }
+
+            Text {
+              leftPadding: 8
+              text: "Current      " + (pomBox.pomState === "idle" ? "---" : pomBox.pomState)
+              color: pomBox.pomState === "work" ? root.accentColor : pomBox.pomState === "idle" ? root.dimColor : root.okColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+              height: 24
+              verticalAlignment: Text.AlignVCenter
+            }
+
+            Item {
+              width: pomPopupCol.width
+              height: 9
+              Rectangle {
+                anchors.centerIn: parent
+                width: parent.width
+                height: 1
+                color: root.borderColor
+              }
+            }
+
+            Rectangle {
+              width: pomPopupCol.width
+              height: 24
+              color: pomResetMouse.containsMouse ? "#2a2a2a" : "transparent"
+              radius: 2
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 8
+                text: "⊘  Reset"
+                color: root.critColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                id: pomResetMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: {
+                  pomBox.reset()
+                  pomBox.totalPoms = 0
+                  pomBox.totalFocusMins = 0
+                  pomPopup.visible = false
+                }
+              }
+            }
+          }
+        }
+      }
+
+      PanelWindow {
+        id: memoInput
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+        focusable: true
+
+        anchors {
+          top: true
+          bottom: true
+          left: true
+          right: true
+        }
+
+        property var notes: []
+        property bool inDepthMode: false
+
+        function refresh() {
+          memoInlineLoadProc.running = true
+        }
+
+        function parseNotes(raw) {
+          var lines = raw.split("\n").filter(function(l) { return l.trim() })
+          var items = []
+          for (var i = lines.length - 1; i >= 0 && items.length < 8; i--) {
+            try { items.push(JSON.parse(lines[i])) } catch(e) {}
+          }
+          if (items.length === 0 && raw.trim().length > 0) {
+            var stitched = raw.replace(/}\s*{/g, "}\n{")
+            var fallbackLines = stitched.split("\n").filter(function(l) { return l.trim() })
+            for (var j = fallbackLines.length - 1; j >= 0 && items.length < 8; j--) {
+              try { items.push(JSON.parse(fallbackLines[j])) } catch(e2) {}
+            }
+          }
+          notes = items
+        }
+
+        function fmtRelative(iso) {
+          var d = new Date(iso)
+          var now = new Date()
+          var secs = Math.floor((now - d) / 1000)
+          if (isNaN(secs) || secs < 0) return ""
+          if (secs < 60) return "now"
+          var mins = Math.floor(secs / 60)
+          if (mins < 60) return mins + "m ago"
+          var hrs = Math.floor(mins / 60)
+          if (hrs < 48) return hrs + "h ago"
+          var days = Math.floor(hrs / 24)
+          return days + "d ago"
+        }
+
+        onVisibleChanged: {
+          if (visible) {
+            memoInputField.text = ""
+            memoInputArea.text = ""
+            memoInput.inDepthMode = false
+            memoInput.refresh()
+            memoInputField.forceActiveFocus()
+          }
+        }
+
+        Process {
+          id: memoInlineLoadProc
+          command: ["/usr/bin/env", "bash", "-c", "cat ~/.local/share/quickmemo/notes.jsonl 2>/dev/null || true"]
+          running: false
+          stdout: StdioCollector {
+            onStreamFinished: memoInput.parseNotes((this.text || "").trim())
+          }
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: memoInput.visible = false
+        }
+
+        Rectangle {
+          anchors.centerIn: parent
+          width: Math.min(parent.width - 128, 784)
+          height: Math.min(parent.height - 60, 432)
+          color: "#111214"
+          border.width: 1
+          border.color: root.borderColor
+          clip: true
+
+          MouseArea { anchors.fill: parent }
+
+          Item {
+            anchors.fill: parent
+            anchors.margins: 22
+            z: 1
+
+            Rectangle {
+              id: memoEntryBox
+              anchors.horizontalCenter: parent.horizontalCenter
+              y: {
+                if (!memoInput.inDepthMode && memoNotesPanel.visible) return 10
+                var base = Math.floor((parent.height - memoEntryBox.height - (memoNotesPanel.visible ? (memoNotesPanel.height + 16) : 0)) / 2)
+                return Math.max(0, base)
+              }
+              width: Math.floor(parent.width * 0.9)
+              height: memoInput.inDepthMode ? Math.min(parent.height - 8, 340) : 56
+              color: "#111214"
+              border.width: 1
+              border.color: "#303236"
+
+              Row {
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                spacing: 10
+
+                Text {
+                  id: memoPrompt
+                  anchors.verticalCenter: parent.verticalCenter
+                  text: "›"
+                  color: root.accentColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: memoInput.inDepthMode ? 18 : 22
+                }
+
+                Item {
+                  width: Math.max(0, parent.width - memoPrompt.width - 10)
+                  height: parent.height
+
+                  TextInput {
+                    id: memoInputField
+                    anchors.fill: parent
+                    anchors.topMargin: 12
+                    anchors.bottomMargin: 12
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    color: root.fgColor
+                    selectionColor: root.accentColor
+                    selectedTextColor: "#111111"
+                    font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                    font.pixelSize: 22
+                    clip: true
+                    visible: !memoInput.inDepthMode
+
+                    Keys.onEscapePressed: memoInput.visible = false
+                    Keys.onTabPressed: function(event) {
+                      memoInput.inDepthMode = true
+                      memoInputArea.forceActiveFocus()
+                      event.accepted = true
+                    }
+                    Keys.onReturnPressed: {
+                      var text = memoInputField.text.trim()
+                      if (text) {
+                        panel.memoSave(text, "input")
+                        memoInputField.text = ""
+                        memoInput.refresh()
+                      }
+                    }
+                  }
+
+                  Flickable {
+                    id: memoInputAreaFlick
+                    anchors.fill: parent
+                    anchors.topMargin: 8
+                    anchors.bottomMargin: 8
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    contentWidth: width
+                    contentHeight: memoInputArea.implicitHeight
+                    clip: true
+                    flickableDirection: Flickable.VerticalFlick
+                    visible: memoInput.inDepthMode
+
+                    TextEdit {
+                      id: memoInputArea
+                      width: memoInputAreaFlick.width
+                      color: root.fgColor
+                      selectionColor: root.accentColor
+                      selectedTextColor: "#111111"
+                      font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                      font.pixelSize: 16
+                      wrapMode: TextEdit.Wrap
+
+                      Keys.onEscapePressed: memoInput.visible = false
+                      Keys.onTabPressed: function(event) {
+                        memoInput.inDepthMode = false
+                        memoInputField.forceActiveFocus()
+                        event.accepted = true
+                      }
+                      Keys.onPressed: function(event) {
+                        if (event.key === Qt.Key_Return && (event.modifiers & Qt.ControlModifier)) {
+                          var text = memoInputArea.text.trim()
+                          if (text) {
+                            panel.memoSave(text, "input")
+                            memoInputArea.text = ""
+                            memoInput.refresh()
+                          }
+                          event.accepted = true
+                        }
+                      }
+                    }
+                  }
+
+                  Text {
+                    anchors.fill: parent
+                    anchors.topMargin: 12
+                    anchors.bottomMargin: 12
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    text: memoInput.inDepthMode ? "In-depth note (Ctrl+Enter to save, Tab for quick mode)" : "Add memo"
+                    color: root.dimColor
+                    visible: memoInput.inDepthMode ? memoInputArea.text.length === 0 : memoInputField.text.length === 0
+                    font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                    font.pixelSize: memoInput.inDepthMode ? 14 : 22
+                    horizontalAlignment: Text.AlignLeft
+                    verticalAlignment: memoInput.inDepthMode ? Text.AlignTop : Text.AlignVCenter
+                  }
+                }
+              }
+            }
+
+            Rectangle {
+              id: memoNotesPanel
+              anchors.left: memoEntryBox.left
+              anchors.right: memoEntryBox.right
+              anchors.top: memoEntryBox.bottom
+              anchors.topMargin: 16
+              anchors.bottom: parent.bottom
+              color: "#15171a"
+              border.width: 1
+              border.color: "#2b2d31"
+              radius: 0
+              visible: !memoInput.inDepthMode && memoInput.notes.length > 0
+
+              Flickable {
+                id: memoNotesFlick
+                anchors.fill: parent
+                anchors.margins: 9
+                contentWidth: width
+                contentHeight: memoNotesCol.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                flickableDirection: Flickable.VerticalFlick
+
+                Column {
+                  id: memoNotesCol
+                  width: memoNotesFlick.width
+                  spacing: 6
+
+                  Repeater {
+                    model: memoInput.notes
+
+                    delegate: Rectangle {
+                      required property var modelData
+                      width: memoNotesCol.width
+                      height: 32
+                      color: memoItemHover.containsMouse ? "#1c1f23" : "transparent"
+                      radius: 0
+
+                      Text {
+                        anchors.left: parent.left
+                        anchors.right: noteAge.left
+                        anchors.rightMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        leftPadding: 4
+                        text: "→ " + ((modelData.text || "").replace(/\n+/g, " ").trim())
+                        color: root.fgColor
+                        font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                        font.pixelSize: 16
+                        elide: Text.ElideRight
+                        verticalAlignment: Text.AlignVCenter
+                      }
+
+                      Text {
+                        id: noteAge
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        rightPadding: 4
+                        text: memoInput.fmtRelative(modelData.ts)
+                        color: root.dimColor
+                        font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                        font.pixelSize: 14
+                        horizontalAlignment: Text.AlignRight
+                      }
+
+                      MouseArea {
+                        id: memoItemHover
+                        anchors.fill: parent
+                        hoverEnabled: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      PanelWindow {
+        id: memoReview
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors {
+          top: true
+          bottom: true
+          left: true
+          right: true
+        }
+
+        property var notes: []
+
+        function refresh() {
+          memoLoadProc.running = true
+        }
+
+        function parseNotes(raw) {
+          var lines = raw.split("\n").filter(function(l) { return l.trim() })
+          var items = []
+          for (var i = lines.length - 1; i >= 0 && items.length < 50; i--) {
+            try { items.push(JSON.parse(lines[i])) } catch(e) {}
+          }
+          notes = items
+        }
+
+        function fmtTs(iso) {
+          var d = new Date(iso)
+          return Qt.formatDateTime(d, "yyyy-MM-dd HH:mm")
+        }
+
+        Process {
+          id: memoLoadProc
+          command: ["/usr/bin/env", "bash", "-c", "cat ~/.local/share/quickmemo/notes.jsonl 2>/dev/null || true"]
+          running: false
+          stdout: StdioCollector {
+            onStreamFinished: memoReview.parseNotes((this.text || "").trim())
+          }
+        }
+
+        Process {
+          id: memoClipCopy
+          running: false
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: memoReview.visible = false
+        }
+
+        Rectangle {
+          anchors.centerIn: parent
+          width: 600
+          height: Math.min(memoReviewFlick.contentHeight + 50, parent.height - 80)
+          color: root.bgColor
+          border.width: 1
+          border.color: root.borderColor
+          clip: true
+
+          MouseArea {
+            anchors.fill: parent
+            onWheel: function(wheel) {}
+          }
+
+          Column {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 8
+            z: 1
+
+            Text {
+              text: "━━ Recent Memos ━━"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 2
+              bottomPadding: 4
+            }
+
+            Flickable {
+              id: memoReviewFlick
+              width: parent.width
+              height: Math.min(contentHeight, panel.height - 130)
+              contentHeight: memoReviewCol.implicitHeight
+              clip: true
+              flickableDirection: Flickable.VerticalFlick
+              boundsBehavior: Flickable.StopAtBounds
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                onWheel: function(wheel) {
+                  memoReviewFlick.contentY = Math.max(0,
+                    Math.min(memoReviewFlick.contentHeight - memoReviewFlick.height,
+                      memoReviewFlick.contentY - wheel.angleDelta.y))
+                }
+              }
+
+              Column {
+                id: memoReviewCol
+                width: parent.width
+                spacing: 0
+
+                Repeater {
+                  model: memoReview.notes
+
+                  delegate: Rectangle {
+                    required property var modelData
+                    width: memoReviewCol.width
+                    height: memoNoteCol.implicitHeight + 12
+                    color: memoItemMouse.containsMouse ? "#2a2a2a" : "transparent"
+                    radius: 2
+
+                    Column {
+                      id: memoNoteCol
+                      anchors.left: parent.left
+                      anchors.right: parent.right
+                      anchors.verticalCenter: parent.verticalCenter
+                      leftPadding: 8
+                      rightPadding: 8
+                      spacing: 2
+
+                      Text {
+                        text: memoReview.fmtTs(modelData.ts) + (modelData.src === "clipboard" ? "  [clip]" : "")
+                        color: root.dimColor
+                        font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                        font.pixelSize: 10
+                      }
+
+                      Text {
+                        width: parent.width - 16
+                        text: (modelData.text || "").substring(0, 200)
+                        color: root.fgColor
+                        font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                        font.pixelSize: 12
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 3
+                        elide: Text.ElideRight
+                      }
+                    }
+
+                    MouseArea {
+                      id: memoItemMouse
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      onClicked: {
+                        memoClipCopy.command = ["/usr/bin/env", "bash", "-c",
+                          "echo " + Qt.btoa(modelData.text) + " | base64 -d | wl-copy"]
+                        memoClipCopy.running = true
+                        root.runShell("notify-send -r 91192 -t 1500 'Quick Memo' 'Copied to clipboard'")
+                      }
+                    }
+                  }
                 }
               }
             }

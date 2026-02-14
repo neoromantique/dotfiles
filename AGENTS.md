@@ -1,93 +1,66 @@
 # AGENTS Guide: Dotfiles Repository
 
-Chezmoi-managed dotfiles with device-adaptive templates. Source files in `~/dotfiles/`, deployed to `~/` via `chezmoi apply`.
+Chezmoi-managed dotfiles. Source in `~/dotfiles/`, deployed via `chezmoi apply`.
 
 ## Device Profiles
 
-| Profile | Hostname | Primary Monitor | Has Touchpad | Has Battery |
-|---------|----------|-----------------|--------------|-------------|
+| Profile | Hostname | Primary Monitor | Touchpad | Battery |
+|---------|----------|-----------------|----------|---------|
 | desktop | box | DP-2 | No | No |
 | laptop | bluefin | eDP-1 | Yes | Yes |
 
 ## Template Variables
 
-```go
-{{ .deviceProfile }}   // "desktop" or "laptop"
-{{ .hostname }}        // "box" or "bluefin"
-{{ .primaryMonitor }}  // "DP-2" or "eDP-1"
-{{ .hasTouchpad }}     // boolean
-{{ .hasBattery }}      // boolean
-{{ .idleTimeout }}     // 300 (desktop) or 180 (laptop)
-{{ .secretsPath }}     // "~/secrets"
-```
+`{{ .deviceProfile }}` (desktop/laptop), `{{ .hostname }}`, `{{ .primaryMonitor }}`, `{{ .hasTouchpad }}`, `{{ .hasBattery }}`, `{{ .idleTimeout }}` (300/180), `{{ .secretsPath }}` (~/secrets)
 
-## File Naming Conventions
+## File Naming
 
-| Pattern | Effect |
-|---------|--------|
-| `private_dot_*` | Hidden file with 700 permissions |
-| `dot_*` | Hidden file with 755 permissions |
-| `executable_*` | Executable (755) |
-| `*.tmpl` | Processed as Go template |
+- `private_dot_*` — hidden, 700 perms
+- `dot_*` — hidden, 755 perms
+- `executable_*` — 755
+- `*.tmpl` — Go template
 
-## Directory Structure
+## Structure
 
 ```
 home/
-├── private_dot_config/     # ~/.config/
-│   ├── hypr/               # Hyprland configs
-│   ├── fish/               # Shell
-│   ├── waybar/             # Status bar
-│   └── ghostty/            # Terminal
-├── dot_local/bin/          # ~/.local/bin/ scripts
-└── .chezmoiscripts/        # One-time setup scripts
+├── private_dot_config/   # hypr/, fish/, waybar/, ghostty/, quickshell/
+├── dot_local/bin/        # scripts
+└── .chezmoiscripts/      # one-time setup
 ```
 
-## Hyprland Config Files
+## Hyprland (`home/private_dot_config/hypr/`)
 
-All in `home/private_dot_config/hypr/`:
-
-| File | Purpose |
-|------|---------|
-| `hyprland.conf.tmpl` | Main config, keybindings, window rules |
-| `monitors.conf.tmpl` | Monitor setup |
-| `autostart.conf.tmpl` | Startup applications |
-| `colors.conf` | Color palette |
-| `workspaces.conf` | Workspace definitions |
-| `hyprpaper.conf.tmpl` | Wallpaper |
-| `hypridle.conf.tmpl` | Idle/power management |
-| `hyprlock.conf` | Lock screen |
-
-## Template Conditionals
-
-```go
-{{- if eq .deviceProfile "desktop" }}
-# Desktop only
-{{- else if eq .deviceProfile "laptop" }}
-# Laptop only
-{{- end }}
-
-{{- if .hasBattery }}
-# Battery-dependent (laptop brightness keys, etc.)
-{{- end }}
-
-{{- if .hasTouchpad }}
-# Touchpad settings
-{{- end }}
-```
-
-## Key Commands
-
-```bash
-chezmoi apply          # Deploy changes
-chezmoi diff           # Preview changes
-chezmoi edit <file>    # Edit managed file
-chezmoi add <file>     # Add new file to management
-```
+`hyprland.conf.tmpl` (main/keybinds/rules), `monitors.conf.tmpl`, `autostart.conf.tmpl`, `colors.conf`, `workspaces.conf`, `hyprpaper.conf.tmpl`, `hypridle.conf.tmpl`, `hyprlock.conf`
 
 ## Standards
 
-- Scripts: `#!/usr/bin/env bash` with `set -euo pipefail`
-- Secrets: Store in `~/secrets/`, reference via `{{ .secretsPath }}`
-- Window rules: Use `windowrulev2` (not deprecated `windowrule`)
-- Whitespace: Use `{{-` to trim in templates
+- Scripts: `#!/usr/bin/env bash` + `set -euo pipefail`
+- Secrets via `{{ .secretsPath }}`
+- Use `windowrulev2` (not `windowrule`)
+- Use `{{-` to trim whitespace in templates
+
+## QuickShell (`home/private_dot_config/quickshell/shell.qml.tmpl`)
+
+Single-file bottom bar + popups. VPN scripts in `dot_local/bin/executable_vpn-{status,switcher,helper}`.
+
+### Design Language
+
+- **Theme**: dark, minimal, no rounded corners (`radius: 0` on modules)
+- **Colors**: bg `#0f0f0f`, module bg `#1a1a1a`, fg `#e0e0e0`, dim `#888888`, accent `#e67e22`, ok `#2ecc71`, warn `#f1c40f`, crit `#e74c3c`, border `#333333`
+- **Font**: `"Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"` at 12px (11px for section headers)
+- **Text-only indicators** — no icons. Prefixed labels: `VOL 85%`, `MIC muted`, `NET eth 10.0.0.5`, `CPU 12%`, `MEM 34%`, `BAT 72%`, `BRT 50%`, `TIME 2025-01-15 14:30`
+- **Bar**: bottom-anchored, 34px total height, 4px outer margin, 6px inner row padding
+- **Modules**: `ModuleBox` component — `#1a1a1a` bg, 1px border, 22px height, content padded 12px wide
+- **Layout**: left group (workspaces) + flexible spacer + right group (vpn, vol, mic, net, [bat, brt on laptop], cpu, mem, clock, tray), 6px spacing between modules
+- **Popups**: item rows 24px, hover `#2a2a2a`, `●` active / `○` inactive, section headers `━━ Title ━━` in dim color
+
+### QuickShell Patterns
+
+- **Popups**: fullscreen transparent overlay `PanelWindow` (all anchors true, `ExclusionMode.Ignore`), NOT a second positioned PanelWindow. Three mouse layers: background dismiss, absorb on popup rect, content Column `z: 1`
+- **Cross-window positioning**: `mapToItem(null, 0, 0)` only maps within own window. Compute popup X from layout math against `rightGroup.implicitWidth`
+- **Process sync**: pending counter, decrement in each `onStreamFinished`, combine at 0
+- **Bash safety**: `command -v foo &>/dev/null && foo || echo '{}'`. Use `---TAG---` separators for JS parsing
+- **QML reactivity**: assign NEW object (`Object.assign({}, old, changes)`) to trigger bindings
+- **Keyboard input in popups**: set `focusable: true` on the PanelWindow
+- **PulseAudio**: `pactl list sinks` (not `short`) for descriptions; filter sources with `grep -v '\.monitor'`
