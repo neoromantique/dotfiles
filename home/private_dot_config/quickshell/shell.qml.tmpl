@@ -9,13 +9,18 @@ ShellRoot {
   id: root
 
   property color bgColor: "#0f0f0f"
+  property color bgSecondary: "#1a1a1a"
+  property color bgTertiary: "#242424"
   property color fgColor: "#e0e0e0"
+  property color textSecondary: "#b0b0b0"
   property color dimColor: "#888888"
   property color accentColor: "#e67e22"
   property color okColor: "#2ecc71"
   property color warnColor: "#f1c40f"
   property color critColor: "#e74c3c"
+  property color infoColor: "#3498db"
   property color borderColor: "#333333"
+  property color borderSubtle: "#2a2a2a"
 
   Process {
     id: shellExec
@@ -64,11 +69,171 @@ ShellRoot {
     return name === "chrome-sharing-indicator" || name === "special:chrome-sharing-indicator"
   }
 
-  component ModuleBox: Rectangle {
-    color: "#1a1a1a"
-    border.width: 1
-    border.color: root.borderColor
-    radius: 0
+  function isSpecialWs(name) {
+    return name.indexOf("special:") === 0
+  }
+
+  property var wsOrder: []
+  property var wsWidths: ({})
+  property var activeSpecials: ({})
+
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (event.name === "activespecial") {
+        var parts = event.parse(2)
+        var wsName = parts[0]
+        var monitor = parts[1]
+        var s = Object.assign({}, root.activeSpecials)
+        if (wsName) {
+          s[monitor] = wsName
+        } else {
+          delete s[monitor]
+        }
+        root.activeSpecials = s
+      }
+    }
+  }
+
+  function isSpecialActive(name) {
+    var vals = Object.keys(activeSpecials)
+    for (var i = 0; i < vals.length; i++) {
+      if (activeSpecials[vals[i]] === name) return true
+    }
+    return false
+  }
+
+  function ensureWsOrder(name) {
+    if (wsIgnored(name) || isSpecialWs(name)) return
+    if (wsOrder.indexOf(name) === -1) {
+      var o = wsOrder.slice()
+      o.push(name)
+      wsOrder = o
+    }
+  }
+
+  function applyWsOrder(dragName, dropIndex) {
+    var o = wsOrder.filter(function(n) { return n !== dragName })
+    if (dropIndex < 0) return
+    o.splice(Math.min(dropIndex, o.length), 0, dragName)
+    wsOrder = o
+    wsOrderSaveDebounce.restart()
+  }
+
+  function wsVisualOrder(dragName, dropIndex) {
+    if (!dragName) return wsOrder
+    var o = wsOrder.filter(function(n) { return n !== dragName })
+    if (dropIndex < 0) return o
+    o.splice(Math.min(dropIndex, o.length), 0, dragName)
+    return o
+  }
+
+  function wsPosInOrder(name, order, spacing) {
+    var x = 0
+    for (var i = 0; i < order.length; i++) {
+      if (order[i] === name) return x
+      var w = wsWidths[order[i]]
+      if (w !== undefined) x += w + spacing
+    }
+    return x
+  }
+
+  function wsSpecialNames() {
+    var names = []
+    var keys = Object.keys(wsWidths)
+    for (var i = 0; i < keys.length; i++) {
+      if (isSpecialWs(keys[i])) names.push(keys[i])
+    }
+    return names.sort()
+  }
+
+  function wsSpecialPosX(name, spacing) {
+    var specials = wsSpecialNames()
+    var x = 0
+    for (var i = 0; i < specials.length; i++) {
+      if (specials[i] === name) return x
+      x += wsWidths[specials[i]] + spacing
+    }
+    return x
+  }
+
+  function wsSpecialTotalWidth(spacing) {
+    var specials = wsSpecialNames()
+    var total = 0
+    for (var i = 0; i < specials.length; i++) {
+      if (i > 0) total += spacing
+      total += wsWidths[specials[i]]
+    }
+    return total
+  }
+
+  function wsRegularOffset(spacing) {
+    var sw = wsSpecialTotalWidth(spacing)
+    return sw > 0 ? sw + 8 : 0
+  }
+
+  function wsTotalWidth(spacing) {
+    var total = 0
+    var first = true
+    for (var i = 0; i < wsOrder.length; i++) {
+      var w = wsWidths[wsOrder[i]]
+      if (w !== undefined) {
+        if (!first) total += spacing
+        total += w
+        first = false
+      }
+    }
+    return total
+  }
+
+  function wsFullWidth(spacing) {
+    return wsRegularOffset(spacing) + wsTotalWidth(spacing)
+  }
+
+  function wsDropIndex(centerX, spacing, dragName) {
+    var x = 0
+    var slot = 0
+    for (var i = 0; i < wsOrder.length; i++) {
+      if (wsOrder[i] === dragName) continue
+      var w = wsWidths[wsOrder[i]]
+      if (w === undefined) continue
+      if (centerX < x + w / 2 + spacing / 2) return slot
+      x += w + spacing
+      slot++
+    }
+    return slot
+  }
+
+  Timer {
+    id: wsOrderSaveDebounce
+    interval: 500
+    repeat: false
+    onTriggered: {
+      wsOrderSaver.command = ["/usr/bin/env", "bash", "-c", "echo '" + JSON.stringify(root.wsOrder) + "' > ~/.config/quickshell/ws-order.json"]
+      wsOrderSaver.running = true
+    }
+  }
+
+  Process {
+    id: wsOrderLoader
+    command: ["/usr/bin/env", "bash", "-c", "cat ~/.config/quickshell/ws-order.json 2>/dev/null || echo '[]'"]
+    running: true
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          var loaded = JSON.parse((this.text || "[]").trim())
+          if (Array.isArray(loaded) && loaded.length > 0) root.wsOrder = loaded.filter(function(n) { return !root.isSpecialWs(n) })
+        } catch(e) {}
+      }
+    }
+  }
+
+  Process {
+    id: wsOrderSaver
+    running: false
+  }
+
+  component ModuleBox: Item {
     implicitHeight: 22
   }
 
@@ -115,52 +280,139 @@ ShellRoot {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6
 
-            ModuleBox {
+            Item {
               id: workspacesBox
-              implicitWidth: workspacesRow.implicitWidth + 12
+              implicitWidth: { var _w = root.wsWidths; return root.wsFullWidth(4) }
+              implicitHeight: 22
 
-              Row {
+              property string dragName: ""
+              property int dropIndex: -1
+              property real dragOffsetX: 0
+
+              Item {
                 id: workspacesRow
-                anchors.centerIn: parent
-                spacing: 6
+                anchors.fill: parent
 
                 Repeater {
+                  id: wsRepeater
                   model: Hyprland.workspaces
 
                   delegate: Rectangle {
                     required property var modelData
-                    property bool ignored: root.wsIgnored(modelData.name)
+                    property string wsName: modelData.name
+                    property bool ignored: root.wsIgnored(wsName)
+                    property bool special: root.isSpecialWs(wsName)
+                    property bool specialActive: special && root.isSpecialActive(wsName)
+                    property bool isDragging: !special && workspacesBox.dragName === wsName
 
                     visible: !ignored
                     color: modelData.urgent
                       ? root.critColor
-                      : (modelData.active ? root.accentColor : "transparent")
-                    border.width: 1
-                    border.color: modelData.urgent ? root.critColor : root.borderColor
+                      : (specialActive ? root.accentColor : "transparent")
                     radius: 0
-                    implicitHeight: 18
-                    implicitWidth: wsText.implicitWidth + 10
+                    width: wsText.implicitWidth + 12
+                    height: 16
+                    z: isDragging ? 10 : 0
+                    opacity: isDragging ? 0.8 : 1.0
+
+                    x: {
+                      var _w = root.wsWidths // ensure QML tracks dependency
+                      if (special) return root.wsSpecialPosX(wsName, 4)
+                      var offset = root.wsRegularOffset(4)
+                      if (isDragging) return workspacesBox.dragOffsetX
+                      var order = root.wsVisualOrder(workspacesBox.dragName, workspacesBox.dropIndex)
+                      return offset + root.wsPosInOrder(wsName, order, 4)
+                    }
+                    y: (parent.height - height) / 2
+
+                    Behavior on x {
+                      enabled: !isDragging
+                      NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+                    }
+
+                    onWidthChanged: {
+                      if (!ignored) {
+                        var w = Object.assign({}, root.wsWidths)
+                        w[wsName] = width
+                        root.wsWidths = w
+                      }
+                    }
+
+                    Component.onCompleted: {
+                      if (!ignored) {
+                        var w = Object.assign({}, root.wsWidths)
+                        w[wsName] = width
+                        root.wsWidths = w
+                        root.ensureWsOrder(wsName)
+                      }
+                    }
+
+                    Component.onDestruction: {
+                      var n = wsName
+                      if (n && !root.wsIgnored(n)) {
+                        var w = Object.assign({}, root.wsWidths)
+                        delete w[n]
+                        root.wsWidths = w
+                      }
+                    }
 
                     Text {
                       id: wsText
                       anchors.centerIn: parent
-                      text: root.wsNames[modelData.name] || "WS"
-                      color: modelData.active || modelData.urgent ? "#111111" : root.fgColor
+                      text: root.wsNames[wsName] || "WS"
+                      color: specialActive ? root.bgColor : (modelData.active ? root.accentColor : (modelData.urgent ? root.bgColor : root.dimColor))
                       font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
-                      font.pixelSize: 12
+                      font.pixelSize: 11
                     }
 
                     MouseArea {
                       anchors.fill: parent
                       acceptedButtons: Qt.LeftButton | Qt.RightButton
-                      onClicked: function(mouse) {
-                        if (mouse.button === Qt.RightButton) {
-                          wsRenamePopup.wsId = modelData.name
+                      preventStealing: !special
+
+                      property real grabOffset: 0
+                      property bool dragging: false
+
+                      onPressed: function(mouse) {
+                        if (mouse.button === Qt.LeftButton) {
+                          grabOffset = mouse.x
+                          dragging = false
+                        }
+                      }
+
+                      onPositionChanged: function(mouse) {
+                        if (special) return
+                        if (!(mouse.buttons & Qt.LeftButton)) return
+                        var absX = parent.x + mouse.x
+                        if (!dragging) {
+                          if (Math.abs(mouse.x - grabOffset) > 4) {
+                            dragging = true
+                            workspacesBox.dragName = wsName
+                            workspacesBox.dropIndex = root.wsOrder.indexOf(wsName)
+                            workspacesBox.dragOffsetX = parent.x
+                          }
+                          return
+                        }
+                        workspacesBox.dragOffsetX = absX - grabOffset
+                        var regX = absX - root.wsRegularOffset(4)
+                        workspacesBox.dropIndex = root.wsDropIndex(regX, 4, workspacesBox.dragName)
+                      }
+
+                      onReleased: function(mouse) {
+                        if (dragging) {
+                          root.applyWsOrder(workspacesBox.dragName, workspacesBox.dropIndex)
+                          workspacesBox.dragName = ""
+                          workspacesBox.dropIndex = -1
+                          dragging = false
+                        } else if (mouse.button === Qt.RightButton) {
+                          wsRenamePopup.wsId = wsName
                           wsRenamePopup.renameX = mapToItem(null, 0, 0).x
                           wsRenamePopup.visible = true
-                          wsRenameInput.text = root.wsNames[modelData.name] || ""
+                          wsRenameInput.text = root.wsNames[wsName] || ""
                           wsRenameInput.selectAll()
                           wsRenameInput.forceActiveFocus()
+                        } else if (special) {
+                          Hyprland.dispatch("togglespecialworkspace " + wsName.replace("special:", ""))
                         } else {
                           modelData.activate()
                         }
@@ -174,10 +426,23 @@ ShellRoot {
                 anchors.fill: parent
                 acceptedButtons: Qt.NoButton
                 onWheel: function(wheel) {
-                  if (wheel.angleDelta.y > 0) {
-                    Hyprland.dispatch("workspace e+1")
-                  } else if (wheel.angleDelta.y < 0) {
-                    Hyprland.dispatch("workspace e-1")
+                  var activeWs = panel.hyprMonitor.activeWorkspace
+                  if (!activeWs) return
+                  var idx = root.wsOrder.indexOf(activeWs.name)
+                  if (idx === -1) return
+                  var dir = wheel.angleDelta.y > 0 ? -1 : 1
+                  var target = idx + dir
+                  while (target >= 0 && target < root.wsOrder.length) {
+                    if (root.wsWidths[root.wsOrder[target]] !== undefined) break
+                    target += dir
+                  }
+                  if (target < 0 || target >= root.wsOrder.length) return
+                  for (var i = 0; i < wsRepeater.count; i++) {
+                    var item = wsRepeater.itemAt(i)
+                    if (item && item.wsName === root.wsOrder[target]) {
+                      item.modelData.activate()
+                      return
+                    }
                   }
                 }
               }
@@ -273,7 +538,7 @@ ShellRoot {
                 text: "VPN off"
                 color: vpnBox.vpnClass === "connected"
                   ? root.accentColor
-                  : (vpnBox.vpnClass === "disconnected" ? root.dimColor : root.fgColor)
+                  : root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -347,7 +612,7 @@ ShellRoot {
                 id: spkText
                 anchors.centerIn: parent
                 text: "VOL --"
-                color: root.fgColor
+                color: root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -356,7 +621,13 @@ ShellRoot {
                 id: spkProc
                 command: ["/usr/bin/env", "bash", "-lc", "mute=$(pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | awk '{print $2}'); vol=$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | awk 'NR==1{print $5}'); if [ \"${mute}\" = \"yes\" ]; then echo 'VOL muted'; elif [ -n \"${vol}\" ]; then echo \"VOL ${vol}\"; else echo 'VOL --'; fi"]
                 running: true
-                stdout: StdioCollector { onStreamFinished: spkText.text = root.trim(this.text) || "VOL --" }
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    var v = root.trim(this.text) || "VOL --"
+                    spkText.text = v
+                    spkText.color = v === "VOL muted" ? root.warnColor : root.dimColor
+                  }
+                }
               }
 
               MouseArea {
@@ -388,7 +659,7 @@ ShellRoot {
                 id: micText
                 anchors.centerIn: parent
                 text: "MIC --"
-                color: root.fgColor
+                color: root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -397,7 +668,13 @@ ShellRoot {
                 id: micProc
                 command: ["/usr/bin/env", "bash", "-lc", "mute=$(pactl get-source-mute @DEFAULT_SOURCE@ 2>/dev/null | awk '{print $2}'); vol=$(pactl get-source-volume @DEFAULT_SOURCE@ 2>/dev/null | awk 'NR==1{print $5}'); if [ \"${mute}\" = \"yes\" ]; then echo 'MIC muted'; elif [ -n \"${vol}\" ]; then echo \"MIC ${vol}\"; else echo 'MIC --'; fi"]
                 running: true
-                stdout: StdioCollector { onStreamFinished: micText.text = root.trim(this.text) || "MIC --" }
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    var v = root.trim(this.text) || "MIC --"
+                    micText.text = v
+                    micText.color = v === "MIC muted" ? root.critColor : root.dimColor
+                  }
+                }
               }
 
               MouseArea {
@@ -429,7 +706,7 @@ ShellRoot {
                 id: netText
                 anchors.centerIn: parent
                 text: "NET down"
-                color: root.fgColor
+                color: root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -438,7 +715,13 @@ ShellRoot {
                 id: netProc
                 command: ["/usr/bin/env", "bash", "-lc", "wifi=$(iwgetid -r 2>/dev/null || true); if [ -n \"$wifi\" ]; then sig=$(awk 'NR==3{gsub(/\./,\"\",$3); q=$3+0; printf \"%d\", int((q/70)*100)}' /proc/net/wireless 2>/dev/null); [ -z \"$sig\" ] && sig=0; echo \"NET wifi $wifi ${sig}%\"; exit; fi; iface=$(ip route | awk '/^default/{print $5; exit}'); if [ -n \"$iface\" ]; then ip4=$(ip -4 addr show dev \"$iface\" | awk '/inet /{print $2; exit}' | cut -d/ -f1); if [ -n \"$ip4\" ]; then echo \"NET eth $ip4\"; else echo 'NET link'; fi; else echo 'NET down'; fi"]
                 running: true
-                stdout: StdioCollector { onStreamFinished: netText.text = root.trim(this.text) || "NET down" }
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    var v = root.trim(this.text) || "NET down"
+                    netText.text = v
+                    netText.color = v === "NET down" ? root.critColor : root.dimColor
+                  }
+                }
               }
 
               Timer {
@@ -458,7 +741,7 @@ ShellRoot {
                 id: batteryText
                 anchors.centerIn: parent
                 text: "BAT --"
-                color: root.fgColor
+                color: root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -479,7 +762,7 @@ ShellRoot {
                     } else if (m && Number(m[1]) <= 30) {
                       batteryText.color = root.warnColor
                     } else {
-                      batteryText.color = root.fgColor
+                      batteryText.color = root.dimColor
                     }
                   }
                 }
@@ -501,7 +784,7 @@ ShellRoot {
                 id: brtText
                 anchors.centerIn: parent
                 text: "BRT --"
-                color: root.fgColor
+                color: root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -706,7 +989,7 @@ ShellRoot {
                 id: memoBoxText
                 anchors.centerIn: parent
                 text: memoBox.todayCount > 0 ? "MEMO " + memoBox.todayCount : "MEMO"
-                color: root.fgColor
+                color: memoBox.todayCount > 0 ? root.accentColor : root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -746,7 +1029,7 @@ ShellRoot {
                 id: cpuText
                 anchors.centerIn: parent
                 text: "CPU --"
-                color: root.fgColor
+                color: root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -755,7 +1038,15 @@ ShellRoot {
                 id: cpuProc
                 command: ["/usr/bin/env", "bash", "-lc", "read -r _ u n s i _ < /proc/stat; used=$((u+n+s)); total=$((u+n+s+i)); if [ \"$total\" -gt 0 ]; then printf 'CPU %d%%\\n' $((used*100/total)); else echo 'CPU --'; fi"]
                 running: true
-                stdout: StdioCollector { onStreamFinished: cpuText.text = root.trim(this.text) || "CPU --" }
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    var v = root.trim(this.text) || "CPU --"
+                    cpuText.text = v
+                    var m = v.match(/(\d+)%/)
+                    var pct = m ? Number(m[1]) : 0
+                    cpuText.color = pct >= 90 ? root.critColor : pct >= 70 ? root.warnColor : root.dimColor
+                  }
+                }
               }
 
               Timer {
@@ -774,7 +1065,7 @@ ShellRoot {
                 id: memText
                 anchors.centerIn: parent
                 text: "MEM --"
-                color: root.fgColor
+                color: root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -783,7 +1074,15 @@ ShellRoot {
                 id: memProc
                 command: ["/usr/bin/env", "bash", "-lc", "free | awk '/Mem:/ { if ($2 > 0) printf \"MEM %d%%\\n\", int($3*100/$2); else print \"MEM --\"; }'"]
                 running: true
-                stdout: StdioCollector { onStreamFinished: memText.text = root.trim(this.text) || "MEM --" }
+                stdout: StdioCollector {
+                  onStreamFinished: {
+                    var v = root.trim(this.text) || "MEM --"
+                    memText.text = v
+                    var m = v.match(/(\d+)%/)
+                    var pct = m ? Number(m[1]) : 0
+                    memText.color = pct >= 90 ? root.critColor : pct >= 70 ? root.warnColor : root.dimColor
+                  }
+                }
               }
 
               Timer {
@@ -802,7 +1101,7 @@ ShellRoot {
                 id: clockText
                 anchors.centerIn: parent
                 text: "TIME --"
-                color: root.fgColor
+                color: root.dimColor
                 font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                 font.pixelSize: 12
               }
@@ -1096,7 +1395,7 @@ ShellRoot {
                 required property var modelData
                 width: sinkCol.width
                 height: 24
-                color: sinkItemMouse.containsMouse ? "#2a2a2a" : "transparent"
+                color: sinkItemMouse.containsMouse ? root.bgTertiary : "transparent"
                 radius: 2
 
                 Text {
@@ -1234,7 +1533,7 @@ ShellRoot {
                 required property var modelData
                 width: sourceCol.width
                 height: 24
-                color: srcItemMouse.containsMouse ? "#2a2a2a" : "transparent"
+                color: srcItemMouse.containsMouse ? root.bgTertiary : "transparent"
                 radius: 2
 
                 Text {
@@ -1355,7 +1654,7 @@ ShellRoot {
               Rectangle {
                 width: 30
                 height: 24
-                color: calPrevMouse.containsMouse ? "#2a2a2a" : "transparent"
+                color: calPrevMouse.containsMouse ? root.bgTertiary : "transparent"
                 radius: 2
 
                 Text {
@@ -1390,7 +1689,7 @@ ShellRoot {
               Rectangle {
                 width: 30
                 height: 24
-                color: calNextMouse.containsMouse ? "#2a2a2a" : "transparent"
+                color: calNextMouse.containsMouse ? root.bgTertiary : "transparent"
                 radius: 2
 
                 Text {
@@ -1453,7 +1752,7 @@ ShellRoot {
                     anchors.centerIn: parent
                     text: modelData.day
                     color: modelData.today
-                      ? "#111111"
+                      ? root.bgColor
                       : (modelData.current ? root.fgColor : root.dimColor)
                     font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                     font.pixelSize: 12
@@ -1511,7 +1810,7 @@ ShellRoot {
             verticalAlignment: TextInput.AlignVCenter
             color: root.fgColor
             selectionColor: root.accentColor
-            selectedTextColor: "#111111"
+            selectedTextColor: root.bgColor
             font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
             font.pixelSize: 12
             maximumLength: 12
@@ -1701,7 +2000,7 @@ ShellRoot {
                 required property var modelData
                 width: vpnPopupCol.width
                 height: 24
-                color: wgItemMouse.containsMouse ? "#2a2a2a" : "transparent"
+                color: wgItemMouse.containsMouse ? root.bgTertiary : "transparent"
                 radius: 2
                 property bool active: vpnPopup.wgActive.indexOf(modelData) >= 0
 
@@ -1746,7 +2045,7 @@ ShellRoot {
                 required property var modelData
                 width: vpnPopupCol.width
                 height: 24
-                color: tsAcctMouse.containsMouse ? "#2a2a2a" : "transparent"
+                color: tsAcctMouse.containsMouse ? root.bgTertiary : "transparent"
                 radius: 2
 
                 Text {
@@ -1774,7 +2073,7 @@ ShellRoot {
               visible: !vpnPopup.tsRunning
               width: vpnPopupCol.width
               height: 24
-              color: tsStartMouse.containsMouse ? "#2a2a2a" : "transparent"
+              color: tsStartMouse.containsMouse ? root.bgTertiary : "transparent"
               radius: 2
 
               Text {
@@ -1808,7 +2107,7 @@ ShellRoot {
               visible: vpnPopup.tsRunning && vpnPopup.tsExitId !== ""
               width: vpnPopupCol.width
               height: 24
-              color: exitOffMouse.containsMouse ? "#2a2a2a" : "transparent"
+              color: exitOffMouse.containsMouse ? root.bgTertiary : "transparent"
               radius: 2
 
               Text {
@@ -1835,7 +2134,7 @@ ShellRoot {
                 required property var modelData
                 width: vpnPopupCol.width
                 height: 24
-                color: exitNodeMouse.containsMouse ? "#2a2a2a" : "transparent"
+                color: exitNodeMouse.containsMouse ? root.bgTertiary : "transparent"
                 radius: 2
 
                 Text {
@@ -1862,7 +2161,7 @@ ShellRoot {
               visible: vpnPopup.tsRunning
               width: vpnPopupCol.width
               height: 24
-              color: tsStopMouse.containsMouse ? "#2a2a2a" : "transparent"
+              color: tsStopMouse.containsMouse ? root.bgTertiary : "transparent"
               radius: 2
 
               Text {
@@ -1891,7 +2190,7 @@ ShellRoot {
             Rectangle {
               width: vpnPopupCol.width
               height: 24
-              color: disconnAllMouse.containsMouse ? "#2a2a2a" : "transparent"
+              color: disconnAllMouse.containsMouse ? root.bgTertiary : "transparent"
               radius: 2
 
               Text {
@@ -1982,7 +2281,7 @@ ShellRoot {
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
               text: pomFlash.flashText
-              color: pomFlash.flashOn ? pomFlash.flashColor : "#333333"
+              color: pomFlash.flashOn ? pomFlash.flashColor : root.borderColor
               font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
               font.pixelSize: 72
             }
@@ -1990,7 +2289,7 @@ ShellRoot {
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
               text: pomBox.pomState === "done" ? "click anywhere to start" : "click to dismiss"
-              color: "#666666"
+              color: root.dimColor
               font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
               font.pixelSize: 14
             }
@@ -2178,7 +2477,7 @@ ShellRoot {
             Rectangle {
               width: pomPopupCol.width
               height: 24
-              color: pomResetMouse.containsMouse ? "#2a2a2a" : "transparent"
+              color: pomResetMouse.containsMouse ? root.bgTertiary : "transparent"
               radius: 2
 
               Text {
@@ -2287,7 +2586,7 @@ ShellRoot {
           anchors.centerIn: parent
           width: Math.min(parent.width - 128, 784)
           height: Math.min(parent.height - 60, 432)
-          color: "#111214"
+          color: root.bgSecondary
           border.width: 1
           border.color: root.borderColor
           clip: true
@@ -2309,15 +2608,15 @@ ShellRoot {
               }
               width: Math.floor(parent.width * 0.9)
               height: memoInput.inDepthMode ? Math.min(parent.height - 8, 340) : 56
-              color: "#111214"
+              color: root.bgColor
               border.width: 1
-              border.color: "#303236"
+              border.color: root.borderSubtle
 
               Row {
                 anchors.fill: parent
-                anchors.leftMargin: 14
-                anchors.rightMargin: 14
-                spacing: 10
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                spacing: 12
 
                 Text {
                   id: memoPrompt
@@ -2325,11 +2624,11 @@ ShellRoot {
                   text: "›"
                   color: root.accentColor
                   font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
-                  font.pixelSize: memoInput.inDepthMode ? 18 : 22
+                  font.pixelSize: memoInput.inDepthMode ? 18 : 24
                 }
 
                 Item {
-                  width: Math.max(0, parent.width - memoPrompt.width - 10)
+                  width: Math.max(0, parent.width - memoPrompt.width - 12)
                   height: parent.height
 
                   TextInput {
@@ -2341,9 +2640,9 @@ ShellRoot {
                     anchors.rightMargin: 6
                     color: root.fgColor
                     selectionColor: root.accentColor
-                    selectedTextColor: "#111111"
+                    selectedTextColor: root.bgColor
                     font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
-                    font.pixelSize: 22
+                    font.pixelSize: 24
                     clip: true
                     visible: !memoInput.inDepthMode
 
@@ -2381,9 +2680,9 @@ ShellRoot {
                       width: memoInputAreaFlick.width
                       color: root.fgColor
                       selectionColor: root.accentColor
-                      selectedTextColor: "#111111"
+                      selectedTextColor: root.bgColor
                       font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
-                      font.pixelSize: 16
+                      font.pixelSize: 14
                       wrapMode: TextEdit.Wrap
 
                       Keys.onEscapePressed: memoInput.visible = false
@@ -2416,7 +2715,7 @@ ShellRoot {
                     color: root.dimColor
                     visible: memoInput.inDepthMode ? memoInputArea.text.length === 0 : memoInputField.text.length === 0
                     font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
-                    font.pixelSize: memoInput.inDepthMode ? 14 : 22
+                    font.pixelSize: memoInput.inDepthMode ? 14 : 24
                     horizontalAlignment: Text.AlignLeft
                     verticalAlignment: memoInput.inDepthMode ? Text.AlignTop : Text.AlignVCenter
                   }
@@ -2431,9 +2730,9 @@ ShellRoot {
               anchors.top: memoEntryBox.bottom
               anchors.topMargin: 16
               anchors.bottom: parent.bottom
-              color: "#15171a"
+              color: root.bgColor
               border.width: 1
-              border.color: "#2b2d31"
+              border.color: root.borderSubtle
               radius: 0
               visible: !memoInput.inDepthMode && memoInput.notes.length > 0
 
@@ -2459,19 +2758,19 @@ ShellRoot {
                       required property var modelData
                       width: memoNotesCol.width
                       height: 32
-                      color: memoItemHover.containsMouse ? "#1c1f23" : "transparent"
+                      color: memoItemHover.containsMouse ? root.bgTertiary : "transparent"
                       radius: 0
 
                       Text {
                         anchors.left: parent.left
                         anchors.right: noteAge.left
-                        anchors.rightMargin: 10
+                        anchors.rightMargin: 12
                         anchors.verticalCenter: parent.verticalCenter
                         leftPadding: 4
                         text: "→ " + ((modelData.text || "").replace(/\n+/g, " ").trim())
                         color: root.fgColor
                         font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
-                        font.pixelSize: 16
+                        font.pixelSize: 14
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
                       }
@@ -2617,7 +2916,7 @@ ShellRoot {
                     required property var modelData
                     width: memoReviewCol.width
                     height: memoNoteCol.implicitHeight + 12
-                    color: memoItemMouse.containsMouse ? "#2a2a2a" : "transparent"
+                    color: memoItemMouse.containsMouse ? root.bgTertiary : "transparent"
                     radius: 2
 
                     Column {
@@ -2633,7 +2932,7 @@ ShellRoot {
                         text: memoReview.fmtTs(modelData.ts) + (modelData.src === "clipboard" ? "  [clip]" : "")
                         color: root.dimColor
                         font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                       }
 
                       Text {

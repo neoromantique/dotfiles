@@ -27,7 +27,8 @@ niri-validate:
 
 # Quickshell / Hypr helpers
 qs-reload:
-    pkill -USR2 qs || true
+    qs kill || true
+    qs -d
 
 hypr-reload:
     hyprctl reload

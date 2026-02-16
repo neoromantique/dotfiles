@@ -47,13 +47,18 @@ Single-file bottom bar + popups. VPN scripts in `dot_local/bin/executable_vpn-{s
 ### Design Language
 
 - **Theme**: dark, minimal, no rounded corners (`radius: 0` on modules)
-- **Colors**: bg `#0f0f0f`, module bg `#1a1a1a`, fg `#e0e0e0`, dim `#888888`, accent `#e67e22`, ok `#2ecc71`, warn `#f1c40f`, crit `#e74c3c`, border `#333333`
+- **Colors** (all defined as root properties, no raw hex in components):
+  - Backgrounds: `bgColor` `#0f0f0f`, `bgSecondary` `#1a1a1a` (modules/cards), `bgTertiary` `#242424` (hovers)
+  - Text: `fgColor` `#e0e0e0`, `textSecondary` `#b0b0b0`, `dimColor` `#888888`
+  - Accent: `accentColor` `#e67e22`
+  - Status: `okColor` `#2ecc71`, `warnColor` `#f1c40f`, `critColor` `#e74c3c`, `infoColor` `#3498db`
+  - Borders: `borderColor` `#333333`, `borderSubtle` `#2a2a2a`
 - **Font**: `"Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"` at 12px (11px for section headers)
 - **Text-only indicators** — no icons. Prefixed labels: `VOL 85%`, `MIC muted`, `NET eth 10.0.0.5`, `CPU 12%`, `MEM 34%`, `BAT 72%`, `BRT 50%`, `TIME 2025-01-15 14:30`
 - **Bar**: bottom-anchored, 34px total height, 4px outer margin, 6px inner row padding
-- **Modules**: `ModuleBox` component — `#1a1a1a` bg, 1px border, 22px height, content padded 12px wide
+- **Modules**: `ModuleBox` component — `bgSecondary` bg, 1px border, 22px height, content padded 12px wide
 - **Layout**: left group (workspaces) + flexible spacer + right group (vpn, vol, mic, net, [bat, brt on laptop], cpu, mem, clock, tray), 6px spacing between modules
-- **Popups**: item rows 24px, hover `#2a2a2a`, `●` active / `○` inactive, section headers `━━ Title ━━` in dim color
+- **Popups**: item rows 24px, hover `bgTertiary`, `●` active / `○` inactive, section headers `━━ Title ━━` in dim color
 
 ### QuickShell Patterns
 

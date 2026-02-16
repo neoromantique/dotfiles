@@ -50,6 +50,32 @@ general {
     layout = dwindle
 }
 
+group {
+    col.border_active = rgb(e67e22)
+    col.border_inactive = rgb(333333)
+
+    groupbar {
+        enabled = true
+        font_family = Terminus
+        font_size = 11
+        height = 18
+        gradients = true
+        indicator_height = 0
+        col.active = rgb(242424)
+        col.inactive = rgb(0f0f0f)
+        col.locked_active = rgb(242424)
+        col.locked_inactive = rgb(0f0f0f)
+        text_color = rgb(e0e0e0)
+        text_color_inactive = rgb(888888)
+        text_color_locked_active = rgb(e0e0e0)
+        text_color_locked_inactive = rgb(888888)
+        rounding = 0
+        gaps_in = 0
+        gaps_out = 0
+        keep_upper_gap = false
+    }
+}
+
 decoration {
     rounding = 0
     active_opacity = 1.0
@@ -225,10 +251,10 @@ bind = SUPER SHIFT, A, movetoworkspace, special:org
 # Quick Memo (QuickShell)
 bind = , F12, exec, touch /tmp/qs-memo-input
 bind = SHIFT, F12, exec, touch /tmp/qs-memo-clip
-bind = SUPER, X, workspace, name:media
-bind = SUPER SHIFT, X, movetoworkspace, name:media
-bind = SUPER SHIFT, C, movetoworkspace, name:tg
-bind = SUPER, c, workspace, name:tg
+bind = SUPER, X, togglespecialworkspace, media
+bind = SUPER SHIFT, X, movetoworkspacesilent, special:media
+bind = SUPER, C, togglespecialworkspace, tg
+bind = SUPER SHIFT, C, movetoworkspacesilent, special:tg
 bind = $mainMod, S, togglespecialworkspace, termius
 bind = $mainMod SHIFT, S, movetoworkspacesilent, special:termius
 bind = $mainMod, G, togglespecialworkspace, llm
@@ -287,12 +313,12 @@ windowrule = match:initial_class ^chromium-work$, workspace 2
 windowrule = match:class ^chromium-llm$, workspace special:llm
 windowrule = match:initial_class ^chromium-llm$, workspace special:llm
 windowrule = match:class ^(heynote|Heynote)$, workspace special:llm
-windowrule = match:class ^(org.telegram.desktop)$, workspace name:tg
-windowrule = match:class ^(discord)$, workspace name:tg
-windowrule = match:class ^Slack$, workspace name:tg
-windowrule = match:class ^org.mozilla.Thunderbird$, workspace name:tg
-windowrule = match:class ^spotify$, workspace name:media
-windowrule = match:initial_class ^spotify$, workspace name:media
+windowrule = match:class ^(org.telegram.desktop)$, workspace special:tg
+windowrule = match:class ^(discord)$, workspace special:tg
+windowrule = match:class ^Slack$, workspace special:tg
+windowrule = match:class ^org.mozilla.Thunderbird$, workspace special:tg
+windowrule = match:class ^spotify$, workspace special:media
+windowrule = match:initial_class ^spotify$, workspace special:media
 windowrule = match:class ^ticktick$, workspace special:org
 windowrule = match:initial_class ^ticktick$, workspace special:org
 windowrule = match:class .*, suppress_event maximize
