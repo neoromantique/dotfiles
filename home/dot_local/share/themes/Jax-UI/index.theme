@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=Jax-UI
+Comment=Dark minimal theme with amber accent — sharp corners, borders not shadows
+
+[X-GNOME-Metatheme]
+GtkTheme=Jax-UI
+IconTheme=kora
+CursorTheme=WhiteSur-cursors

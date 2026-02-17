@@ -1,0 +1,278 @@
+/* Jax UI Design Language — GTK4 Theme
+ * Inherits Breeze-Dark widget styling, overrides palette + structure.
+ * Tokens: https://dev.gtw.lt/jax-ui-kit/tokens.html
+ */
+
+@import url("/usr/share/themes/Breeze-Dark/gtk-4.0/gtk.css");
+
+/* ══════════════════════════════════════════════
+   Color overrides (last @define-color wins)
+   ══════════════════════════════════════════════ */
+
+/* ── GTK4 accent overrides (override gsettings accent-color) ── */
+@define-color accent_color #e67e22;
+@define-color accent_bg_color #e67e22;
+@define-color accent_fg_color #0f0f0f;
+
+/* ── Borders ── */
+@define-color borders_breeze #333333;
+@define-color unfocused_borders_breeze #2a2a2a;
+@define-color unfocused_insensitive_borders_breeze #2a2a2a;
+@define-color insensitive_borders_breeze #2a2a2a;
+
+/* ── Base / Background ── */
+@define-color theme_base_color_breeze #0f0f0f;
+@define-color theme_bg_color_breeze #0f0f0f;
+@define-color content_view_bg_breeze #0f0f0f;
+@define-color insensitive_base_color_breeze #0f0f0f;
+@define-color insensitive_bg_color_breeze #0f0f0f;
+@define-color insensitive_unfocused_bg_color_breeze #0f0f0f;
+@define-color theme_unfocused_base_color_breeze #0f0f0f;
+@define-color theme_unfocused_bg_color_breeze #0f0f0f;
+@define-color theme_unfocused_view_bg_color_breeze #0f0f0f;
+
+/* ── Foreground ── */
+@define-color theme_fg_color_breeze #b0b0b0;
+@define-color theme_text_color_breeze #e0e0e0;
+@define-color insensitive_fg_color_breeze #777777;
+@define-color insensitive_base_fg_color_breeze #777777;
+@define-color insensitive_unfocused_fg_color_breeze #777777;
+@define-color theme_unfocused_fg_color_breeze #888888;
+@define-color theme_unfocused_text_color_breeze #b0b0b0;
+@define-color theme_unfocused_view_text_color_breeze #b0b0b0;
+
+/* ── Selection ── */
+@define-color theme_selected_bg_color_breeze #e67e22;
+@define-color theme_selected_fg_color_breeze #0f0f0f;
+@define-color theme_hovering_selected_bg_color_breeze #242424;
+@define-color theme_unfocused_selected_bg_color_breeze #d35400;
+@define-color theme_unfocused_selected_bg_color_alt_breeze #d35400;
+@define-color theme_unfocused_selected_fg_color_breeze #0f0f0f;
+@define-color insensitive_selected_bg_color_breeze #1a1a1a;
+@define-color insensitive_selected_fg_color_breeze #777777;
+@define-color insensitive_unfocused_selected_bg_color_breeze #1a1a1a;
+@define-color insensitive_unfocused_selected_fg_color_breeze #777777;
+
+/* ── Buttons ── */
+@define-color theme_button_background_normal_breeze #1a1a1a;
+@define-color theme_button_background_backdrop_breeze #1a1a1a;
+@define-color theme_button_background_insensitive_breeze #1a1a1a;
+@define-color theme_button_background_backdrop_insensitive_breeze #1a1a1a;
+@define-color theme_button_foreground_normal_breeze #e0e0e0;
+@define-color theme_button_foreground_backdrop_breeze #b0b0b0;
+@define-color theme_button_foreground_insensitive_breeze #777777;
+@define-color theme_button_foreground_backdrop_insensitive_breeze #777777;
+@define-color theme_button_foreground_active_breeze #0f0f0f;
+@define-color theme_button_foreground_active_backdrop_breeze #0f0f0f;
+@define-color theme_button_foreground_active_insensitive_breeze #777777;
+@define-color theme_button_foreground_active_backdrop_insensitive_breeze #777777;
+@define-color theme_button_decoration_hover_breeze #e67e22;
+@define-color theme_button_decoration_hover_backdrop_breeze #d35400;
+@define-color theme_button_decoration_hover_insensitive_breeze #777777;
+@define-color theme_button_decoration_hover_backdrop_insensitive_breeze #777777;
+@define-color theme_button_decoration_focus_breeze #e67e22;
+@define-color theme_button_decoration_focus_backdrop_breeze #d35400;
+@define-color theme_button_decoration_focus_insensitive_breeze #777777;
+@define-color theme_button_decoration_focus_backdrop_insensitive_breeze #777777;
+
+/* ── Header / Titlebar ── */
+@define-color theme_header_background_breeze #0f0f0f;
+@define-color theme_header_background_backdrop_breeze #0f0f0f;
+@define-color theme_header_background_light_breeze #1a1a1a;
+@define-color theme_header_foreground_breeze #b0b0b0;
+@define-color theme_header_foreground_backdrop_breeze #888888;
+@define-color theme_header_foreground_insensitive_breeze #777777;
+@define-color theme_header_foreground_insensitive_backdrop_breeze #777777;
+@define-color theme_titlebar_background_breeze #0f0f0f;
+@define-color theme_titlebar_background_backdrop_breeze #0f0f0f;
+@define-color theme_titlebar_background_light_breeze #1a1a1a;
+@define-color theme_titlebar_foreground_breeze #e0e0e0;
+@define-color theme_titlebar_foreground_backdrop_breeze #888888;
+@define-color theme_titlebar_foreground_insensitive_breeze #777777;
+@define-color theme_titlebar_foreground_insensitive_backdrop_breeze #777777;
+
+/* ── View decorations ── */
+@define-color theme_view_active_decoration_color_breeze #e67e22;
+@define-color theme_view_hover_decoration_color_breeze #e67e22;
+
+/* ── Tooltip ── */
+@define-color tooltip_background_breeze #1a1a1a;
+@define-color tooltip_border_breeze #333333;
+@define-color tooltip_text_breeze #e0e0e0;
+
+/* ── Links ── */
+@define-color link_color_breeze #e67e22;
+@define-color link_visited_color_breeze #d35400;
+
+/* ── Semantic: Success ── */
+@define-color success_color_breeze #2ecc71;
+@define-color success_color_backdrop_breeze #2ecc71;
+@define-color success_color_insensitive_breeze #777777;
+@define-color success_color_insensitive_backdrop_breeze #777777;
+
+/* ── Semantic: Error ── */
+@define-color error_color_breeze #e74c3c;
+@define-color error_color_backdrop_breeze #e74c3c;
+@define-color error_color_insensitive_breeze #777777;
+@define-color error_color_insensitive_backdrop_breeze #777777;
+
+/* ── Semantic: Warning ── */
+@define-color warning_color_breeze #f1c40f;
+@define-color warning_color_backdrop_breeze #f1c40f;
+@define-color warning_color_insensitive_breeze #777777;
+@define-color warning_color_insensitive_backdrop_breeze #777777;
+
+
+/* ══════════════════════════════════════════════
+   Structural overrides
+   ══════════════════════════════════════════════ */
+
+/* Sharp corners — radius-none per Jax UI spec */
+window,
+dialog,
+popover,
+tooltip,
+menu,
+menubar,
+button,
+togglebutton,
+entry,
+searchbar,
+notebook,
+notebook > header > tabs > tab,
+frame,
+.sidebar,
+.sidebar row,
+list,
+list > row,
+headerbar,
+.titlebar,
+trough,
+progressbar,
+scale,
+switch,
+scrollbar,
+scrollbar > range > trough > slider,
+.app-notification,
+.osd,
+row.activatable,
+.view,
+.dialog-action-area button {
+    border-radius: 0;
+}
+
+/* No text or icon shadows — flat rendering */
+headerbar,
+.titlebar,
+button,
+label {
+    text-shadow: none;
+    -gtk-icon-shadow: none;
+}
+
+/* Thin scrollbar track */
+scrollbar > range > trough > slider {
+    min-width: 6px;
+    min-height: 6px;
+}
+
+/* Titlebar button overrides */
+headerbar button.titlebutton.close,
+.titlebar button.titlebutton.close {
+    background-image: url("assets/close-normal.svg");
+}
+headerbar button.titlebutton.close:hover,
+.titlebar button.titlebutton.close:hover {
+    background-image: url("assets/close-hover.svg");
+}
+headerbar button.titlebutton.close:active,
+.titlebar button.titlebutton.close:active {
+    background-image: url("assets/close-active.svg");
+}
+headerbar button.titlebutton.close:backdrop,
+.titlebar button.titlebutton.close:backdrop {
+    background-image: url("assets/close-backdrop-normal.svg");
+}
+headerbar button.titlebutton.close:backdrop:hover,
+.titlebar button.titlebutton.close:backdrop:hover {
+    background-image: url("assets/close-backdrop-hover.svg");
+}
+headerbar button.titlebutton.close:backdrop:active,
+.titlebar button.titlebutton.close:backdrop:active {
+    background-image: url("assets/close-backdrop-active.svg");
+}
+
+headerbar button.titlebutton.maximize,
+.titlebar button.titlebutton.maximize {
+    background-image: url("assets/maximize-normal.svg");
+}
+headerbar button.titlebutton.maximize:hover,
+.titlebar button.titlebutton.maximize:hover {
+    background-image: url("assets/maximize-hover.svg");
+}
+headerbar button.titlebutton.maximize:active,
+.titlebar button.titlebutton.maximize:active {
+    background-image: url("assets/maximize-active.svg");
+}
+headerbar button.titlebutton.maximize:backdrop,
+.titlebar button.titlebutton.maximize:backdrop {
+    background-image: url("assets/maximize-backdrop-normal.svg");
+}
+headerbar button.titlebutton.maximize:backdrop:hover,
+.titlebar button.titlebutton.maximize:backdrop:hover {
+    background-image: url("assets/maximize-backdrop-hover.svg");
+}
+headerbar button.titlebutton.maximize:backdrop:active,
+.titlebar button.titlebutton.maximize:backdrop:active {
+    background-image: url("assets/maximize-backdrop-active.svg");
+}
+
+headerbar button.titlebutton.minimize,
+.titlebar button.titlebutton.minimize {
+    background-image: url("assets/minimize-normal.svg");
+}
+headerbar button.titlebutton.minimize:hover,
+.titlebar button.titlebutton.minimize:hover {
+    background-image: url("assets/minimize-hover.svg");
+}
+headerbar button.titlebutton.minimize:active,
+.titlebar button.titlebutton.minimize:active {
+    background-image: url("assets/minimize-active.svg");
+}
+headerbar button.titlebutton.minimize:backdrop,
+.titlebar button.titlebutton.minimize:backdrop {
+    background-image: url("assets/minimize-backdrop-normal.svg");
+}
+headerbar button.titlebutton.minimize:backdrop:hover,
+.titlebar button.titlebutton.minimize:backdrop:hover {
+    background-image: url("assets/minimize-backdrop-hover.svg");
+}
+headerbar button.titlebutton.minimize:backdrop:active,
+.titlebar button.titlebutton.minimize:backdrop:active {
+    background-image: url("assets/minimize-backdrop-active.svg");
+}
+
+.maximized headerbar button.titlebutton.maximize,
+.maximized .titlebar button.titlebutton.maximize {
+    background-image: url("assets/maximized-normal.svg");
+}
+.maximized headerbar button.titlebutton.maximize:hover,
+.maximized .titlebar button.titlebutton.maximize:hover {
+    background-image: url("assets/maximized-hover.svg");
+}
+.maximized headerbar button.titlebutton.maximize:active,
+.maximized .titlebar button.titlebutton.maximize:active {
+    background-image: url("assets/maximized-active.svg");
+}
+.maximized headerbar button.titlebutton.maximize:backdrop,
+.maximized .titlebar button.titlebutton.maximize:backdrop {
+    background-image: url("assets/maximized-backdrop-normal.svg");
+}
+.maximized headerbar button.titlebutton.maximize:backdrop:hover,
+.maximized .titlebar button.titlebutton.maximize:backdrop:hover {
+    background-image: url("assets/maximized-backdrop-hover.svg");
+}
+.maximized headerbar button.titlebutton.maximize:backdrop:active,
+.maximized .titlebar button.titlebutton.maximize:backdrop:active {
+    background-image: url("assets/maximized-backdrop-active.svg");
+}
