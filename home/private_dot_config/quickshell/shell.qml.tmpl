@@ -21,6 +21,20 @@ ShellRoot {
   property color infoColor: "#3498db"
   property color borderColor: "#333333"
   property color borderSubtle: "#2a2a2a"
+  property bool debugMode: {{- if eq (default "00" (env "DEBUG")) "1" }}true{{- else }}false{{- end }}
+  property string debugLastEvent: "startup"
+  property string debugLastEventAt: "--"
+  property int debugEventCount: 0
+
+  function debugNow() {
+    return Qt.formatDateTime(new Date(), "HH:mm:ss.zzz")
+  }
+
+  function debugRecord(evt) {
+    debugEventCount += 1
+    debugLastEvent = evt
+    debugLastEventAt = debugNow()
+  }
 
   Process {
     id: shellExec
@@ -36,11 +50,31 @@ ShellRoot {
     return (s || "").toString().trim()
   }
 
-  property var wsNames: ({"1": "WEB", "2": "CODE", "3": "TERM", "4": "IDE", "5": "VM", "6": "GFX", "7": "DOC", "8": "GAME", "9": "MISC", "10": "TMP", "11": "AUX1", "12": "AUX2", "13": "AUX3", "14": "AUX4", "15": "AUX5", "special:termius": "s:term", "special:org": "s:org", "special:llm": "s:llm"})
+  property var wsNames: ({"1": "WEB", "2": "CODE", "3": "TERM", "4": "IDE", "5": "VM", "6": "GFX", "7": "DOC", "8": "GAME", "9": "MISC", "10": "TMP", "11": "AUX1", "12": "AUX2", "13": "AUX3", "14": "AUX4", "15": "AUX5", "pin-termius": "TERMIUS", "pin-org": "ORG", "pin-llm": "LLM", "pin-tg": "CHAT", "pin-media": "MUSIC"})
+
+  function wsCanonicalName(name) {
+    var n = (name || "").toString()
+    return n.indexOf("name:") === 0 ? n.slice(5) : n
+  }
+
+  function wsDispatchTarget(name) {
+    var canonical = wsCanonicalName(name)
+    return /^\d+$/.test(canonical) ? canonical : ("name:" + canonical)
+  }
+
+  function activateWorkspace(name) {
+    Hyprland.dispatch("workspace " + wsDispatchTarget(name))
+  }
+
+  function wsLabelFor(name) {
+    var canonical = wsCanonicalName(name)
+    return wsNames[canonical] || "WS"
+  }
 
   function setWsLabel(wsId, label) {
+    var key = wsCanonicalName(wsId)
     var n = Object.assign({}, wsNames)
-    n[wsId] = label
+    n[key] = label
     wsNames = n
     wsNamesSaver.command = ["/usr/bin/env", "bash", "-c", "echo '" + JSON.stringify(n) + "' > ~/.config/quickshell/ws-names.json"]
     wsNamesSaver.running = true
@@ -54,7 +88,13 @@ ShellRoot {
       onStreamFinished: {
         try {
           var loaded = JSON.parse((this.text || "{}").trim())
-          root.wsNames = Object.assign({}, root.wsNames, loaded)
+          var normalized = {}
+          var keys = Object.keys(loaded || {})
+          for (var i = 0; i < keys.length; i++) {
+            normalized[root.wsCanonicalName(keys[i])] = loaded[keys[i]]
+          }
+
+          root.wsNames = Object.assign({}, root.wsNames, normalized)
         } catch(e) {}
       }
     }
@@ -66,45 +106,21 @@ ShellRoot {
   }
 
   function wsIgnored(name) {
-    return name === "chrome-sharing-indicator" || name === "special:chrome-sharing-indicator"
+    var canonical = wsCanonicalName(name)
+    return canonical === "chrome-sharing-indicator" || canonical.endsWith(":chrome-sharing-indicator")
   }
 
-  function isSpecialWs(name) {
-    return name.indexOf("special:") === 0
+  function isPinnedWs(name) {
+    return wsCanonicalName(name).indexOf("pin-") === 0
   }
 
   property var wsOrder: []
   property var wsWidths: ({})
-  property var activeSpecials: ({})
-
-  Connections {
-    target: Hyprland
-    function onRawEvent(event) {
-      if (event.name === "activespecial") {
-        var parts = event.parse(2)
-        var wsName = parts[0]
-        var monitor = parts[1]
-        var s = Object.assign({}, root.activeSpecials)
-        if (wsName) {
-          s[monitor] = wsName
-        } else {
-          delete s[monitor]
-        }
-        root.activeSpecials = s
-      }
-    }
-  }
-
-  function isSpecialActive(name) {
-    var vals = Object.keys(activeSpecials)
-    for (var i = 0; i < vals.length; i++) {
-      if (activeSpecials[vals[i]] === name) return true
-    }
-    return false
-  }
+  property var wsGeneration: ({})
+  property int wsGenCounter: 0
 
   function ensureWsOrder(name) {
-    if (wsIgnored(name) || isSpecialWs(name)) return
+    if (wsIgnored(name) || isPinnedWs(name)) return
     if (wsOrder.indexOf(name) === -1) {
       var o = wsOrder.slice()
       o.push(name)
@@ -112,8 +128,21 @@ ShellRoot {
     }
   }
 
+  function wsVisibleOrder() {
+    var out = []
+    for (var i = 0; i < wsOrder.length; i++) {
+      var n = wsOrder[i]
+      if (wsWidths[n] !== undefined) out.push(n)
+    }
+    return out
+  }
+
+  function wsScrollOrder() {
+    return wsPinnedNames().concat(wsVisibleOrder())
+  }
+
   function applyWsOrder(dragName, dropIndex) {
-    var o = wsOrder.filter(function(n) { return n !== dragName })
+    var o = wsVisibleOrder().filter(function(n) { return n !== dragName })
     if (dropIndex < 0) return
     o.splice(Math.min(dropIndex, o.length), 0, dragName)
     wsOrder = o
@@ -121,8 +150,8 @@ ShellRoot {
   }
 
   function wsVisualOrder(dragName, dropIndex) {
-    if (!dragName) return wsOrder
-    var o = wsOrder.filter(function(n) { return n !== dragName })
+    var o = wsVisibleOrder().filter(function(n) { return n !== dragName })
+    if (!dragName) return o
     if (dropIndex < 0) return o
     o.splice(Math.min(dropIndex, o.length), 0, dragName)
     return o
@@ -138,37 +167,37 @@ ShellRoot {
     return x
   }
 
-  function wsSpecialNames() {
+  function wsPinnedNames() {
     var names = []
     var keys = Object.keys(wsWidths)
     for (var i = 0; i < keys.length; i++) {
-      if (isSpecialWs(keys[i])) names.push(keys[i])
+      if (isPinnedWs(keys[i])) names.push(keys[i])
     }
     return names.sort()
   }
 
-  function wsSpecialPosX(name, spacing) {
-    var specials = wsSpecialNames()
+  function wsPinnedPosX(name, spacing) {
+    var pins = wsPinnedNames()
     var x = 0
-    for (var i = 0; i < specials.length; i++) {
-      if (specials[i] === name) return x
-      x += wsWidths[specials[i]] + spacing
+    for (var i = 0; i < pins.length; i++) {
+      if (pins[i] === name) return x
+      x += wsWidths[pins[i]] + spacing
     }
     return x
   }
 
-  function wsSpecialTotalWidth(spacing) {
-    var specials = wsSpecialNames()
+  function wsPinnedTotalWidth(spacing) {
+    var pins = wsPinnedNames()
     var total = 0
-    for (var i = 0; i < specials.length; i++) {
+    for (var i = 0; i < pins.length; i++) {
       if (i > 0) total += spacing
-      total += wsWidths[specials[i]]
+      total += wsWidths[pins[i]]
     }
     return total
   }
 
   function wsRegularOffset(spacing) {
-    var sw = wsSpecialTotalWidth(spacing)
+    var sw = wsPinnedTotalWidth(spacing)
     return sw > 0 ? sw + 8 : 0
   }
 
@@ -191,17 +220,31 @@ ShellRoot {
   }
 
   function wsDropIndex(centerX, spacing, dragName) {
+    var order = wsVisibleOrder()
     var x = 0
     var slot = 0
-    for (var i = 0; i < wsOrder.length; i++) {
-      if (wsOrder[i] === dragName) continue
-      var w = wsWidths[wsOrder[i]]
-      if (w === undefined) continue
+    for (var i = 0; i < order.length; i++) {
+      if (order[i] === dragName) continue
+      var w = wsWidths[order[i]]
       if (centerX < x + w / 2 + spacing / 2) return slot
       x += w + spacing
       slot++
     }
     return slot
+  }
+
+  function wsDropSlotX(dropIndex, spacing, dragName) {
+    var order = wsVisibleOrder()
+    var x = 0
+    var slot = 0
+    for (var i = 0; i < order.length; i++) {
+      if (order[i] === dragName) continue
+      var w = wsWidths[order[i]]
+      if (slot >= dropIndex) return x
+      x += w + spacing
+      slot++
+    }
+    return x
   }
 
   Timer {
@@ -222,7 +265,9 @@ ShellRoot {
       onStreamFinished: {
         try {
           var loaded = JSON.parse((this.text || "[]").trim())
-          if (Array.isArray(loaded) && loaded.length > 0) root.wsOrder = loaded.filter(function(n) { return !root.isSpecialWs(n) })
+          if (Array.isArray(loaded) && loaded.length > 0) {
+            root.wsOrder = loaded.filter(function(n) { return !root.isPinnedWs(n) })
+          }
         } catch(e) {}
       }
     }
@@ -231,6 +276,87 @@ ShellRoot {
   Process {
     id: wsOrderSaver
     running: false
+  }
+
+  property string wtrLocation: ""
+  property var wtrLocations: []
+  property var wtrData: ({})
+
+  function wtrFetch() {
+    if (!wtrLocation) return
+    var loc = wtrLocation.replace(/ /g, "+")
+    wtrFetchProc.command = ["/usr/bin/env", "bash", "-c", "curl -sf 'wttr.in/" + loc + "?format=j1' 2>/dev/null || echo '{}'"]
+    wtrFetchProc.running = true
+  }
+
+  function wtrSaveSettings() {
+    var data = JSON.stringify({ location: wtrLocation, locations: wtrLocations })
+    wtrSettingsSaver.command = ["/usr/bin/env", "bash", "-c", "echo '" + data + "' > ~/.config/quickshell/wtr-settings.json"]
+    wtrSettingsSaver.running = true
+  }
+
+  function wtrAddLocation(loc) {
+    loc = trim(loc)
+    if (!loc) return
+    var locs = wtrLocations.slice()
+    if (locs.indexOf(loc) === -1) locs.push(loc)
+    wtrLocations = locs
+    wtrLocation = loc
+    wtrSaveSettings()
+    wtrFetch()
+  }
+
+  function wtrRemoveLocation(loc) {
+    var locs = wtrLocations.filter(function(l) { return l !== loc })
+    wtrLocations = locs
+    if (wtrLocation === loc) wtrLocation = locs.length > 0 ? locs[0] : ""
+    wtrSaveSettings()
+    wtrFetch()
+  }
+
+  function wtrSetLocation(loc) {
+    wtrLocation = loc
+    wtrSaveSettings()
+    wtrFetch()
+  }
+
+  Process {
+    id: wtrSettingsLoader
+    command: ["/usr/bin/env", "bash", "-c", "cat ~/.config/quickshell/wtr-settings.json 2>/dev/null || echo '{}'"]
+    running: true
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          var s = JSON.parse((this.text || "{}").trim())
+          root.wtrLocation = s.location || ""
+          root.wtrLocations = s.locations || []
+          if (root.wtrLocation) root.wtrFetch()
+        } catch(e) {}
+      }
+    }
+  }
+
+  Process { id: wtrSettingsSaver; running: false }
+
+  Process {
+    id: wtrFetchProc
+    running: false
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          root.wtrData = JSON.parse((this.text || "{}").trim())
+        } catch(e) {
+          root.wtrData = ({})
+        }
+      }
+    }
+  }
+
+  Timer {
+    interval: 600000
+    running: root.wtrLocation !== ""
+    repeat: true
+    onTriggered: root.wtrFetch()
   }
 
   component ModuleBox: Item {
@@ -260,6 +386,18 @@ ShellRoot {
 
       property var hyprMonitor: Hyprland.monitorFor(modelData)
       visible: {{- if eq .deviceProfile "desktop" }}hyprMonitor && hyprMonitor.name === "{{ .primaryMonitor }}"{{- else }}true{{- end }}
+      property bool dbgMouseInside: false
+      property real dbgMouseX: -1
+      property real dbgMouseY: -1
+      property int dbgMouseButtons: 0
+
+      function dbgMouseButtonsText(mask) {
+        var parts = []
+        if (mask & Qt.LeftButton) parts.push("L")
+        if (mask & Qt.MiddleButton) parts.push("M")
+        if (mask & Qt.RightButton) parts.push("R")
+        return parts.length > 0 ? parts.join("+") : "-"
+      }
 
       Rectangle {
         anchors.fill: parent
@@ -288,6 +426,48 @@ ShellRoot {
               property string dragName: ""
               property int dropIndex: -1
               property real dragOffsetX: 0
+              property int dragStartIndex: -1
+              property real dragGrabOffset: 0
+              property real dragCenterX: -1
+              property bool wsDragDebug: root.debugMode
+
+              function resetDragState() {
+                dragName = ""
+                dropIndex = -1
+                dragOffsetX = 0
+                dragStartIndex = -1
+                dragGrabOffset = 0
+                dragCenterX = -1
+              }
+
+              function startDrag(name, startIndex, itemX, grabOffset, itemWidth) {
+                dragName = name
+                dragStartIndex = startIndex
+                dragOffsetX = itemX
+                dragGrabOffset = grabOffset
+                dragCenterX = itemX + itemWidth / 2
+                dropIndex = startIndex
+              }
+
+              function updateDrag(absPointerX, itemWidth) {
+                if (!dragName) return
+                dragOffsetX = absPointerX - dragGrabOffset
+                dragCenterX = dragOffsetX + itemWidth / 2
+                var regCenterX = dragCenterX - root.wsRegularOffset(4)
+                dropIndex = root.wsDropIndex(regCenterX, 4, dragName)
+              }
+
+              function finishDrag(activateOnNoop) {
+                if (!dragName) return
+                var name = dragName
+                var moved = dropIndex >= 0 && dropIndex !== dragStartIndex
+                if (moved) {
+                  root.applyWsOrder(name, dropIndex)
+                } else if (activateOnNoop) {
+                  root.activateWorkspace(name)
+                }
+                resetDragState()
+              }
 
               Item {
                 id: workspacesRow
@@ -299,16 +479,14 @@ ShellRoot {
 
                   delegate: Rectangle {
                     required property var modelData
-                    property string wsName: modelData.name
+                    property string wsName: root.wsCanonicalName(modelData.name)
                     property bool ignored: root.wsIgnored(wsName)
-                    property bool special: root.isSpecialWs(wsName)
-                    property bool specialActive: special && root.isSpecialActive(wsName)
-                    property bool isDragging: !special && workspacesBox.dragName === wsName
+                    property bool pinned: root.isPinnedWs(wsName)
+                    property bool isDragging: !pinned && workspacesBox.dragName === wsName
+                    property int wsGen: 0
 
                     visible: !ignored
-                    color: modelData.urgent
-                      ? root.critColor
-                      : (specialActive ? root.accentColor : "transparent")
+                    color: modelData.urgent ? root.critColor : "transparent"
                     radius: 0
                     width: wsText.implicitWidth + 12
                     height: 16
@@ -317,7 +495,7 @@ ShellRoot {
 
                     x: {
                       var _w = root.wsWidths // ensure QML tracks dependency
-                      if (special) return root.wsSpecialPosX(wsName, 4)
+                      if (pinned) return root.wsPinnedPosX(wsName, 4)
                       var offset = root.wsRegularOffset(4)
                       if (isDragging) return workspacesBox.dragOffsetX
                       var order = root.wsVisualOrder(workspacesBox.dragName, workspacesBox.dropIndex)
@@ -340,6 +518,11 @@ ShellRoot {
 
                     Component.onCompleted: {
                       if (!ignored) {
+                        root.wsGenCounter++
+                        wsGen = root.wsGenCounter
+                        var g = Object.assign({}, root.wsGeneration)
+                        g[wsName] = wsGen
+                        root.wsGeneration = g
                         var w = Object.assign({}, root.wsWidths)
                         w[wsName] = width
                         root.wsWidths = w
@@ -349,26 +532,37 @@ ShellRoot {
 
                     Component.onDestruction: {
                       var n = wsName
-                      if (n && !root.wsIgnored(n)) {
+                      if (n && !root.wsIgnored(n) && root.wsGeneration[n] === wsGen) {
                         var w = Object.assign({}, root.wsWidths)
                         delete w[n]
                         root.wsWidths = w
+                        var g = Object.assign({}, root.wsGeneration)
+                        delete g[n]
+                        root.wsGeneration = g
                       }
                     }
 
                     Text {
                       id: wsText
                       anchors.centerIn: parent
-                      text: root.wsNames[wsName] || "WS"
-                      color: specialActive ? root.bgColor : (modelData.active ? root.accentColor : (modelData.urgent ? root.bgColor : root.dimColor))
+                      text: root.wsLabelFor(wsName)
+                      color: modelData.active ? root.accentColor : (modelData.urgent ? root.bgColor : root.dimColor)
                       font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
                       font.pixelSize: 11
                     }
 
+                    Rectangle {
+                      anchors.fill: parent
+                      visible: workspacesBox.wsDragDebug
+                      color: isDragging ? Qt.rgba(0.95, 0.50, 0.15, 0.30) : Qt.rgba(0.20, 0.45, 0.80, 0.10)
+                      border.width: 1
+                      border.color: isDragging ? root.warnColor : root.borderSubtle
+                    }
                     MouseArea {
                       anchors.fill: parent
                       acceptedButtons: Qt.LeftButton | Qt.RightButton
-                      preventStealing: !special
+                      preventStealing: !pinned
+                      hoverEnabled: true
 
                       property real grabOffset: 0
                       property bool dragging: false
@@ -381,45 +575,82 @@ ShellRoot {
                       }
 
                       onPositionChanged: function(mouse) {
-                        if (special) return
+                        if (pinned) return
                         if (!(mouse.buttons & Qt.LeftButton)) return
                         var absX = parent.x + mouse.x
                         if (!dragging) {
-                          if (Math.abs(mouse.x - grabOffset) > 4) {
-                            dragging = true
-                            workspacesBox.dragName = wsName
-                            workspacesBox.dropIndex = root.wsOrder.indexOf(wsName)
-                            workspacesBox.dragOffsetX = parent.x
-                          }
-                          return
+                          if (Math.abs(mouse.x - grabOffset) <= 4) return
+                          dragging = true
+                          var startIndex = root.wsVisibleOrder().indexOf(wsName)
+                          workspacesBox.startDrag(wsName, startIndex, parent.x, grabOffset, parent.width)
                         }
-                        workspacesBox.dragOffsetX = absX - grabOffset
-                        var regX = absX - root.wsRegularOffset(4)
-                        workspacesBox.dropIndex = root.wsDropIndex(regX, 4, workspacesBox.dragName)
+                        workspacesBox.updateDrag(absX, parent.width)
                       }
 
                       onReleased: function(mouse) {
                         if (dragging) {
-                          root.applyWsOrder(workspacesBox.dragName, workspacesBox.dropIndex)
-                          workspacesBox.dragName = ""
-                          workspacesBox.dropIndex = -1
+                          root.debugRecord("ws-drag-release " + wsName)
+                          workspacesBox.finishDrag(true)
                           dragging = false
-                        } else if (mouse.button === Qt.RightButton) {
+                          return
+                        }
+
+                        if (mouse.button === Qt.RightButton) {
+                          root.debugRecord("ws-rename-open " + wsName)
                           wsRenamePopup.wsId = wsName
                           wsRenamePopup.renameX = mapToItem(null, 0, 0).x
                           wsRenamePopup.visible = true
-                          wsRenameInput.text = root.wsNames[wsName] || ""
+                          wsRenameInput.text = root.wsLabelFor(wsName)
                           wsRenameInput.selectAll()
                           wsRenameInput.forceActiveFocus()
-                        } else if (special) {
-                          Hyprland.dispatch("togglespecialworkspace " + wsName.replace("special:", ""))
                         } else {
-                          modelData.activate()
+                          root.debugRecord("ws-activate " + wsName)
+                          root.activateWorkspace(wsName)
+                        }
+                      }
+
+                      onCanceled: {
+                        if (dragging) {
+                          root.debugRecord("ws-drag-cancel " + wsName)
+                          workspacesBox.resetDragState()
+                          dragging = false
                         }
                       }
                     }
                   }
                 }
+
+                Rectangle {
+                  visible: workspacesBox.wsDragDebug && !!workspacesBox.dragName
+                  x: Math.round(workspacesBox.dragCenterX)
+                  y: 0
+                  width: 1
+                  height: parent.height
+                  color: root.infoColor
+                  z: 31
+                }
+
+                Rectangle {
+                  visible: workspacesBox.wsDragDebug && !!workspacesBox.dragName && workspacesBox.dropIndex >= 0
+                  x: Math.round(root.wsRegularOffset(4) + root.wsDropSlotX(workspacesBox.dropIndex, 4, workspacesBox.dragName))
+                  y: 0
+                  width: 2
+                  height: parent.height
+                  color: root.okColor
+                  z: 32
+                }
+              }
+
+              Text {
+                visible: workspacesBox.wsDragDebug
+                anchors.left: parent.left
+                anchors.bottom: parent.top
+                text: "DBG ws=" + (workspacesBox.dragName || "-")
+                  + " idx=" + workspacesBox.dragStartIndex + "->" + workspacesBox.dropIndex
+                  + " ctr=" + Math.round(workspacesBox.dragCenterX)
+                color: root.dimColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 9
               }
 
               MouseArea {
@@ -428,22 +659,17 @@ ShellRoot {
                 onWheel: function(wheel) {
                   var activeWs = panel.hyprMonitor.activeWorkspace
                   if (!activeWs) return
-                  var idx = root.wsOrder.indexOf(activeWs.name)
+                  var order = root.wsScrollOrder()
+                  if (order.length === 0) return
+                  var activeName = root.wsCanonicalName(activeWs.name)
+                  var idx = order.indexOf(activeName)
                   if (idx === -1) return
                   var dir = wheel.angleDelta.y > 0 ? -1 : 1
                   var target = idx + dir
-                  while (target >= 0 && target < root.wsOrder.length) {
-                    if (root.wsWidths[root.wsOrder[target]] !== undefined) break
-                    target += dir
-                  }
-                  if (target < 0 || target >= root.wsOrder.length) return
-                  for (var i = 0; i < wsRepeater.count; i++) {
-                    var item = wsRepeater.itemAt(i)
-                    if (item && item.wsName === root.wsOrder[target]) {
-                      item.modelData.activate()
-                      return
-                    }
-                  }
+                  if (target < 0 || target >= order.length) return
+                  var targetName = order[target]
+                  root.debugRecord("ws-wheel " + activeName + "->" + targetName)
+                  root.activateWorkspace(targetName)
                 }
               }
             }
@@ -1022,6 +1248,45 @@ ShellRoot {
             }
 
             ModuleBox {
+              id: wtrBox
+              implicitWidth: wtrBoxText.implicitWidth + 12
+
+              Text {
+                id: wtrBoxText
+                anchors.centerIn: parent
+                text: {
+                  if (!root.wtrLocation) return "WTR --"
+                  try {
+                    var cc = root.wtrData.current_condition
+                    if (cc && cc[0]) return "WTR " + cc[0].temp_C + "\u00b0C"
+                  } catch(e) {}
+                  return "WTR ..."
+                }
+                color: root.dimColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 12
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+                onClicked: function(mouse) {
+                  if (mouse.button === Qt.RightButton) {
+                    wtrMapPopup.visible = !wtrMapPopup.visible
+                  } else if (mouse.button === Qt.MiddleButton) {
+                    root.wtrFetch()
+                  } else {
+                    wtrPopup.visible = !wtrPopup.visible
+                    if (wtrPopup.visible) {
+                      wtrLocationInput.text = ""
+                      wtrLocationInput.forceActiveFocus()
+                    }
+                  }
+                }
+              }
+            }
+
+            ModuleBox {
               id: cpuBox
               implicitWidth: cpuText.implicitWidth + 12
 
@@ -1123,8 +1388,13 @@ ShellRoot {
 
               MouseArea {
                 anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
-                onClicked: {
+                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                onClicked: function(mouse) {
+                  if (mouse.button === Qt.MiddleButton) {
+                    root.debugMode = !root.debugMode
+                    root.debugRecord("debug-mode=" + (root.debugMode ? "on" : "off"))
+                    return
+                  }
                   calPopup.visible = !calPopup.visible
                   if (calPopup.visible) calPopup.resetToToday()
                 }
@@ -1181,6 +1451,70 @@ ShellRoot {
               }
             }
           }
+        }
+
+        MouseArea {
+            id: panelMouseProbe
+            anchors.fill: parent
+            z: 200
+            enabled: root.debugMode
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+            propagateComposedEvents: true
+            preventStealing: false
+
+            onEntered: {
+              panel.dbgMouseInside = true
+              root.debugRecord("mouse-enter")
+            }
+
+            onExited: {
+              panel.dbgMouseInside = false
+              panel.dbgMouseButtons = 0
+              root.debugRecord("mouse-exit")
+            }
+
+            onPositionChanged: function(mouse) {
+              panel.dbgMouseInside = true
+              panel.dbgMouseX = mouse.x
+              panel.dbgMouseY = mouse.y
+              panel.dbgMouseButtons = mouse.buttons
+              mouse.accepted = false
+            }
+
+            onPressed: function(mouse) {
+              panel.dbgMouseInside = true
+              panel.dbgMouseX = mouse.x
+              panel.dbgMouseY = mouse.y
+              panel.dbgMouseButtons = mouse.buttons
+              root.debugRecord("mouse-press " + panel.dbgMouseButtonsText(panel.dbgMouseButtons)
+                + " @" + Math.round(panel.dbgMouseX) + "," + Math.round(panel.dbgMouseY))
+              mouse.accepted = false
+            }
+
+            onReleased: function(mouse) {
+              panel.dbgMouseInside = true
+              panel.dbgMouseX = mouse.x
+              panel.dbgMouseY = mouse.y
+              panel.dbgMouseButtons = mouse.buttons
+              root.debugRecord("mouse-release " + panel.dbgMouseButtonsText(panel.dbgMouseButtons)
+                + " @" + Math.round(panel.dbgMouseX) + "," + Math.round(panel.dbgMouseY))
+              mouse.accepted = false
+            }
+
+            onCanceled: {
+              panel.dbgMouseButtons = 0
+              root.debugRecord("mouse-cancel")
+            }
+
+            onWheel: function(wheel) {
+              panel.dbgMouseInside = true
+              panel.dbgMouseX = wheel.x
+              panel.dbgMouseY = wheel.y
+              root.debugRecord("mouse-wheel " + (wheel.angleDelta.y > 0 ? "up" : "down")
+                + " @" + Math.round(panel.dbgMouseX) + "," + Math.round(panel.dbgMouseY))
+              wheel.accepted = false
+            }
         }
       }
 
@@ -1759,6 +2093,421 @@ ShellRoot {
                   }
                 }
               }
+            }
+          }
+        }
+      }
+
+      PanelWindow {
+        id: wtrPopup
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+        focusable: true
+
+        anchors { top: true; bottom: true; left: true; right: true }
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: wtrPopup.visible = false
+        }
+
+        Rectangle {
+          x: parent.width - 34 - trayBox.implicitWidth - clockBox.implicitWidth - memBox.implicitWidth - cpuBox.implicitWidth - wtrBox.implicitWidth
+          y: parent.height - 38 - height
+          width: Math.max(280, wtrCol.implicitWidth + 16)
+          height: wtrCol.implicitHeight + 16
+          color: root.bgColor
+          border.width: 1
+          border.color: root.borderColor
+
+          MouseArea { anchors.fill: parent }
+
+          Column {
+            id: wtrCol
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 2
+            z: 1
+
+            Text {
+              text: "\u2501\u2501 Weather \u2501\u2501"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 2
+              bottomPadding: 4
+            }
+
+            Text {
+              visible: root.wtrData.current_condition !== undefined
+              text: {
+                try {
+                  var cc = root.wtrData.current_condition[0]
+                  var area = root.wtrData.nearest_area[0]
+                  var city = area.areaName[0].value
+                  var country = area.country[0].value
+                  return city + ", " + country
+                } catch(e) { return "" }
+              }
+              color: root.accentColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+              bottomPadding: 2
+            }
+
+            Text {
+              visible: root.wtrData.current_condition !== undefined
+              text: {
+                try {
+                  var cc = root.wtrData.current_condition[0]
+                  return cc.weatherDesc[0].value
+                } catch(e) { return "" }
+              }
+              color: root.fgColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+              bottomPadding: 4
+            }
+
+            Text {
+              visible: root.wtrData.current_condition !== undefined
+              text: {
+                try {
+                  var cc = root.wtrData.current_condition[0]
+                  return "temp     " + cc.temp_C + "\u00b0C  (feels " + cc.FeelsLikeC + "\u00b0C)"
+                } catch(e) { return "" }
+              }
+              color: root.textSecondary
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+            }
+
+            Text {
+              visible: root.wtrData.current_condition !== undefined
+              text: {
+                try {
+                  var cc = root.wtrData.current_condition[0]
+                  return "humid    " + cc.humidity + "%"
+                } catch(e) { return "" }
+              }
+              color: root.textSecondary
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+            }
+
+            Text {
+              visible: root.wtrData.current_condition !== undefined
+              text: {
+                try {
+                  var cc = root.wtrData.current_condition[0]
+                  return "wind     " + cc.windspeedKmph + " km/h " + cc.winddir16Point
+                } catch(e) { return "" }
+              }
+              color: root.textSecondary
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+            }
+
+            Text {
+              visible: root.wtrData.current_condition !== undefined
+              text: {
+                try {
+                  var cc = root.wtrData.current_condition[0]
+                  return "pressure " + cc.pressure + " hPa"
+                } catch(e) { return "" }
+              }
+              color: root.textSecondary
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+            }
+
+            Text {
+              visible: root.wtrData.current_condition !== undefined
+              text: {
+                try {
+                  var cc = root.wtrData.current_condition[0]
+                  return "uv       " + cc.uvIndex + "    vis " + cc.visibility + " km"
+                } catch(e) { return "" }
+              }
+              color: root.textSecondary
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 12
+              bottomPadding: 4
+            }
+
+            Rectangle {
+              width: parent.width
+              height: 1
+              color: root.borderSubtle
+            }
+
+            Text {
+              text: "\u2501\u2501 Location \u2501\u2501"
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 4
+              bottomPadding: 2
+            }
+
+            Rectangle {
+              width: parent.width
+              height: 24
+              color: root.bgSecondary
+              border.width: 1
+              border.color: root.borderSubtle
+
+              Row {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 8
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  text: "\u203a"
+                  color: root.accentColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 14
+                }
+
+                TextInput {
+                  id: wtrLocationInput
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: parent.width - 24
+                  color: root.fgColor
+                  selectionColor: root.accentColor
+                  selectedTextColor: root.bgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                  clip: true
+
+                  property string placeholder: "city name or coords..."
+                  Text {
+                    anchors.fill: parent
+                    text: wtrLocationInput.placeholder
+                    color: root.dimColor
+                    font: wtrLocationInput.font
+                    visible: !wtrLocationInput.text && !wtrLocationInput.activeFocus
+                  }
+
+                  Keys.onEscapePressed: wtrPopup.visible = false
+                  Keys.onReturnPressed: {
+                    var loc = wtrLocationInput.text.trim()
+                    if (loc) {
+                      root.wtrAddLocation(loc)
+                      wtrLocationInput.text = ""
+                    }
+                  }
+                }
+              }
+            }
+
+            Repeater {
+              model: root.wtrLocations
+
+              delegate: Rectangle {
+                required property var modelData
+                required property int index
+                width: wtrCol.width
+                height: 24
+                color: wtrLocItemMouse.containsMouse ? root.bgTertiary : "transparent"
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  leftPadding: 8
+                  text: (modelData === root.wtrLocation ? "\u25cf" : "\u25cb") + "  " + modelData
+                  color: modelData === root.wtrLocation ? root.accentColor : root.fgColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+                }
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  anchors.right: parent.right
+                  rightPadding: 8
+                  text: "\u00d7"
+                  color: wtrDelMouse.containsMouse ? root.critColor : root.dimColor
+                  font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                  font.pixelSize: 12
+
+                  MouseArea {
+                    id: wtrDelMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: root.wtrRemoveLocation(modelData)
+                  }
+                }
+
+                MouseArea {
+                  id: wtrLocItemMouse
+                  anchors.fill: parent
+                  anchors.rightMargin: 24
+                  hoverEnabled: true
+                  onClicked: root.wtrSetLocation(modelData)
+                }
+              }
+            }
+          }
+        }
+      }
+
+      PanelWindow {
+        id: wtrMapPopup
+        screen: panel.screen
+        visible: false
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors { top: true; bottom: true; left: true; right: true }
+
+        property var mapLines: [
+          "          . _..::__:  ,-\"-\"._       |]       ,     _,.__              ",
+          "  _.___ _ _<_>`!(._`.`-.    /        _._     `_ ,_/  '  '-._.---.-.__ ",
+          ".{     \" \" `-==,',._\\{  \\  / {) _   / _ \">_,-' `                 /-/_ ",
+          "\\_.:--.       `._ )`^-. \"'     / ( [_/(                       __,/-'  ",
+          "'\"'    \\        \"    _\\        -_,--'                  )     /. (|    ",
+          "       |           ,'         _)_.\\\\._<> {}              _,' /  '     ",
+          "       `.         /          [_/_'` `\"(                <'}  )         ",
+          "        \\\\    .-. )          /   `-'\"..' `:._          _)  '          ",
+          " `        \\  (  `(          /         `:\\  > \\  ,-^.  /' '            ",
+          "           `._,   \"\"        |           \\`'   \\|   ?_)  {\\            ",
+          "              `=.---.       `._._       ,'     \"`  |' ,- '.           ",
+          "                |    `-._        |     /          `:`<_|=--._         ",
+          "                (        >       .     | ,          `=.__.`-'\\        ",
+          "                 `.     /        |     |{|              ,-.,\\     .   ",
+          "                  |   ,'          \\   / `'            ,\"     \\        ",
+          "                  |  /             |_'                |  __  /        ",
+          "                  | |                                 '-'  `-'   \\.   ",
+          "                  |/                                        \"    /    ",
+          "                  \\.                                            '     ",
+          "                                                                      ",
+          "                   ,/           ______._.--._ _..---.---------.       ",
+          "__,-----\"-..?----_/ )\\    . ,-'\"             \"                  (__--/",
+          "                    /__/\\/                                            "
+        ]
+
+        property int mapUtcMin: 0
+        property string mapDayText: ""
+        property string mapTwiText: ""
+
+        function maskMap(mode) {
+          var lines = mapLines
+          var utcH = mapUtcMin / 60.0
+          var result = []
+          for (var row = 0; row < lines.length; row++) {
+            var line = lines[row]
+            var masked = ""
+            for (var col = 0; col < line.length; col++) {
+              var offset = Math.floor(col / 3) - 11
+              var localHour = (utcH + offset + 1 + 24) % 24
+              var show = false
+              if (mode === "day") show = localHour >= 7 && localHour < 17
+              else if (mode === "twi") show = (localHour >= 5 && localHour < 7) || (localHour >= 17 && localHour < 19)
+              masked += show ? line[col] : " "
+            }
+            result.push(masked)
+          }
+          return result.join("\n")
+        }
+
+        function updateLayers() {
+          var d = new Date()
+          mapUtcMin = d.getUTCHours() * 60 + d.getUTCMinutes()
+          mapDayText = maskMap("day")
+          mapTwiText = maskMap("twi")
+        }
+
+        onVisibleChanged: if (visible) updateLayers()
+
+        Timer {
+          interval: 60000
+          running: wtrMapPopup.visible
+          repeat: true
+          onTriggered: wtrMapPopup.updateLayers()
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          onClicked: wtrMapPopup.visible = false
+        }
+
+        Rectangle {
+          x: parent.width - 34 - trayBox.implicitWidth - clockBox.implicitWidth - memBox.implicitWidth - cpuBox.implicitWidth - wtrBox.implicitWidth
+          y: parent.height - 38 - height
+          width: mapNightText.implicitWidth + 32
+          height: mapCol.implicitHeight + 24
+          color: root.bgColor
+          border.width: 1
+          border.color: root.borderColor
+
+          MouseArea { anchors.fill: parent }
+
+          Column {
+            id: mapCol
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 4
+            z: 1
+
+            Text {
+              text: "\u2501\u2501 World Map \u2501\u2501" + (root.wtrLocation ? "  " + root.wtrLocation : "")
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              bottomPadding: 4
+            }
+
+            Item {
+              width: mapNightText.implicitWidth
+              height: mapNightText.implicitHeight
+
+              Text {
+                id: mapNightText
+                text: wtrMapPopup.mapLines.join("\n")
+                color: "#333333"
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 11
+                lineHeight: 0.55
+                lineHeightMode: Text.ProportionalHeight
+              }
+
+              Text {
+                text: wtrMapPopup.mapTwiText
+                color: root.dimColor
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 11
+                lineHeight: 0.55
+                lineHeightMode: Text.ProportionalHeight
+              }
+
+              Text {
+                text: wtrMapPopup.mapDayText
+                color: root.textSecondary
+                font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+                font.pixelSize: 11
+                lineHeight: 0.55
+                lineHeightMode: Text.ProportionalHeight
+              }
+            }
+
+            Text {
+              visible: root.wtrData.current_condition !== undefined
+              text: {
+                try {
+                  var cc = root.wtrData.current_condition[0]
+                  var area = root.wtrData.nearest_area[0]
+                  return area.areaName[0].value + "  " + cc.temp_C + "\u00b0C  " + cc.weatherDesc[0].value
+                } catch(e) { return "" }
+              }
+              color: root.fgColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              topPadding: 4
             }
           }
         }
@@ -2961,6 +3710,239 @@ ShellRoot {
                   }
                 }
               }
+            }
+          }
+        }
+      }
+
+      PanelWindow {
+        id: focusDebugBar
+        screen: panel.screen
+        visible: root.debugMode && panel.visible
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        aboveWindows: true
+
+        anchors {
+          top: true
+          left: true
+          right: true
+        }
+
+        implicitHeight: debugBg.height + 8
+
+        property bool expanded: false
+        property string activeWsName: "-"
+        property string popupState: "-"
+        property string statusLine: ""
+        property string detailLine: ""
+        property real globalMouseX: -1
+        property real globalMouseY: -1
+        property bool globalCursorOk: false
+        property bool cursorInPanelGeo: false
+        property int captureMismatchTicks: 0
+        property bool captureSuspect: false
+
+        function boolFlag(v) {
+          return v ? "1" : "0"
+        }
+
+        function wsName() {
+          var mon = panel.hyprMonitor
+          if (!mon || !mon.activeWorkspace) return "-"
+          return root.wsCanonicalName(mon.activeWorkspace.name)
+        }
+
+        function visiblePopupNames() {
+          var names = []
+          if (sinkPopup.visible) names.push("sink")
+          if (sourcePopup.visible) names.push("source")
+          if (calPopup.visible) names.push("cal")
+          if (wsRenamePopup.visible) names.push("wsrename")
+          if (vpnPopup.visible) names.push("vpn")
+          if (pomFlash.visible) names.push("pomflash")
+          if (pomPopup.visible) names.push("pom")
+          if (memoInput.visible) names.push("memo")
+          if (memoReview.visible) names.push("memoreview")
+          return names.length > 0 ? names.join(",") : "-"
+        }
+
+        function parseGlobalCursor(raw) {
+          var t = (raw || "").trim()
+          var m = t.match(/(-?\d+(?:\.\d+)?)[^0-9.-]+(-?\d+(?:\.\d+)?)/)
+          if (!m) {
+            globalCursorOk = false
+            cursorInPanelGeo = false
+            captureMismatchTicks = 0
+            captureSuspect = false
+            return
+          }
+
+          var gx = Number(m[1])
+          var gy = Number(m[2])
+          if (isNaN(gx) || isNaN(gy)) {
+            globalCursorOk = false
+            cursorInPanelGeo = false
+            captureMismatchTicks = 0
+            captureSuspect = false
+            return
+          }
+
+          globalCursorOk = true
+          globalMouseX = gx
+          globalMouseY = gy
+          cursorInPanelGeo = gx >= panel.x && gx <= (panel.x + panel.width)
+            && gy >= panel.y && gy <= (panel.y + panel.height)
+
+          if (cursorInPanelGeo && !panel.dbgMouseInside) {
+            captureMismatchTicks += 1
+          } else {
+            captureMismatchTicks = 0
+          }
+
+          var prev = captureSuspect
+          captureSuspect = captureMismatchTicks >= 4
+          if (captureSuspect && !prev) {
+            root.debugRecord("capture-suspect gpos=" + Math.round(globalMouseX) + "," + Math.round(globalMouseY))
+          }
+        }
+
+        function updateState() {
+          var ws = wsName()
+          if (ws !== activeWsName) {
+            activeWsName = ws
+            root.debugRecord("ws-active " + ws)
+          }
+
+          var pop = visiblePopupNames()
+          if (pop !== popupState) {
+            popupState = pop
+            root.debugRecord("popups " + pop)
+          }
+
+          var blocked = pop !== "-"
+          var mouseButtons = panel.dbgMouseButtonsText(panel.dbgMouseButtons)
+          var monitorName = panel.hyprMonitor ? panel.hyprMonitor.name : (panel.screen ? panel.screen.name : "unknown")
+          statusLine = "DBG " + monitorName
+            + " ws=" + ws
+            + " panel[v=" + boolFlag(panel.visible)
+            + " a=" + boolFlag(panel.active)
+            + " f=" + boolFlag(!!panel.activeFocusItem)
+            + " z=" + panel.exclusiveZone
+            + " aw=" + boolFlag(panel.aboveWindows) + "]"
+            + " mouse[in=" + boolFlag(panel.dbgMouseInside)
+            + " geo=" + boolFlag(cursorInPanelGeo)
+            + " btn=" + mouseButtons + "]"
+            + " cap=" + boolFlag(captureSuspect)
+            + " blk=" + boolFlag(blocked)
+            + " pop=" + pop
+            + " last=" + root.debugLastEventAt + " " + root.debugLastEvent
+
+          detailLine = "geo=" + Math.round(panel.x) + "," + Math.round(panel.y)
+            + " " + Math.round(panel.width) + "x" + Math.round(panel.height)
+            + " mousePos=" + Math.round(panel.dbgMouseX) + "," + Math.round(panel.dbgMouseY)
+            + " gpos=" + (globalCursorOk
+              ? (Math.round(globalMouseX) + "," + Math.round(globalMouseY))
+              : "-,-")
+            + " mm=" + captureMismatchTicks
+            + " debug=" + (root.debugMode ? "on" : "off")
+            + " ev#" + root.debugEventCount
+        }
+
+        onVisibleChanged: {
+          if (visible) {
+            root.debugRecord("debug-bar on")
+            updateState()
+          } else {
+            expanded = false
+          }
+        }
+
+        Timer {
+          id: focusDbgPoll
+          interval: 250
+          running: focusDebugBar.visible
+          repeat: true
+          onTriggered: focusDebugBar.updateState()
+        }
+
+        Process {
+          id: focusDbgCursorProc
+          command: ["/usr/bin/env", "bash", "-lc", "hyprctl cursorpos 2>/dev/null || true"]
+          running: false
+          stdout: StdioCollector {
+            onStreamFinished: focusDebugBar.parseGlobalCursor(this.text || "")
+          }
+        }
+
+        Timer {
+          id: focusDbgCursorPoll
+          interval: 250
+          running: focusDebugBar.visible
+          repeat: true
+          onTriggered: focusDbgCursorProc.running = true
+        }
+
+        Rectangle {
+          id: debugBg
+          anchors.top: parent.top
+          anchors.right: parent.right
+          anchors.topMargin: 4
+          anchors.rightMargin: 4
+          width: Math.min(parent.width - 8,
+            Math.max(statusText.implicitWidth, focusDebugBar.expanded ? detailText.implicitWidth : 0) + 20)
+          height: focusDebugBar.expanded ? 38 : 22
+          color: root.bgSecondary
+          border.width: 1
+          border.color: root.infoColor
+          radius: 0
+
+          Column {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 0
+
+            Text {
+              id: statusText
+              text: focusDebugBar.statusLine
+              color: root.fgColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 11
+              verticalAlignment: Text.AlignVCenter
+            }
+
+            Text {
+              id: detailText
+              visible: focusDebugBar.expanded
+              text: focusDebugBar.detailLine
+              color: root.dimColor
+              font.family: "Terminus, IBM Plex Mono, JetBrainsMono Nerd Font, monospace"
+              font.pixelSize: 10
+              verticalAlignment: Text.AlignVCenter
+            }
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+            onClicked: function(mouse) {
+              if (mouse.button === Qt.MiddleButton) {
+                root.runShell("~/.local/bin/mouse-capture-reset")
+                root.debugRecord("capture-reset")
+                return
+              }
+
+              if (mouse.button === Qt.RightButton) {
+                focusDebugBar.expanded = false
+                root.debugMode = false
+                root.debugRecord("debug-mode=off")
+                return
+              }
+
+              focusDebugBar.expanded = !focusDebugBar.expanded
+              root.debugRecord("debug-expanded=" + (focusDebugBar.expanded ? "1" : "0"))
             }
           }
         }

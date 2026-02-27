@@ -27,12 +27,12 @@
   "hyprland/workspaces": {
     "disable-scroll": true,
     "warp-on-scroll": false,
-    "show-special": true,
+    "show-special": false,
     "sort-by": "id",
     "format": "{name}",
     "on-scroll-up": "hyprctl dispatch workspace e+1",
     "on-scroll-down": "hyprctl dispatch workspace e-1",
-    "ignore-workspaces": ["(special:)?chrome-sharing-indicator"],
+    "ignore-workspaces": ["(.*:)?chrome-sharing-indicator"],
     "format-icons": {
       "1": "WEB",
       "2": "CODE",
@@ -44,9 +44,11 @@
       "8": "GAME",
       "9": "MISC",
       "10": "TMP",
-      "special:termius": "s:term",
-      "special:org": "s:org",
-      "special:llm": "s:llm",
+      "pin-termius": "TERMIUS",
+      "pin-org": "ORG",
+      "pin-llm": "LLM",
+      "pin-tg": "CHAT",
+      "pin-media": "MUSIC",
       "default": "WS"
     }
   },

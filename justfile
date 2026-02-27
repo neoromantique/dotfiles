@@ -33,6 +33,14 @@ qs-reload:
 hypr-reload:
     hyprctl reload
 
+fix-res:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mon=$(chezmoi execute-template '{{ "{{" }} .primaryMonitor {{ "}}" }}')
+    res=$(chezmoi execute-template '{{ "{{" }} .primaryResolution {{ "}}" }}')
+    echo "Applying $res to $mon"
+    hyprctl keyword monitor "$mon,$res,0x0,1"
+
 # Combined helpers
 apply-niri: apply niri-validate niri-reload
 

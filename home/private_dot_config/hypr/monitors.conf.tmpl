@@ -3,14 +3,19 @@
 
 {{- if eq .deviceProfile "desktop" }}
 # Desktop dual-monitor setup
-# Primary: {{ .primaryMonitor }} at {{ .primaryResolution }}
-monitor = {{ .primaryMonitor }},{{ .primaryResolution }},0x0,1
-
 {{- if .secondaryMonitor }}
-# Secondary: {{ .secondaryMonitor }} at {{ .secondaryResolution }}
-# Positioned to the right of primary
-monitor = {{ .secondaryMonitor }},{{ .secondaryResolution }},2560x0,1
+# Secondary (portrait, left): {{ .secondaryMonitor }} at {{ .secondaryResolution }}, rotated 90°
+# Bottom-aligned with primary, Dell 5% lower (128px overhang)
+monitor = {{ .secondaryMonitor }},{{ .secondaryResolution }},0x-992,1,transform,1
+
+# Pin LLM and Chat workspaces to the portrait monitor
+workspace = name:pin-llm, monitor:{{ .secondaryMonitor }}
+workspace = name:pin-tg, monitor:{{ .secondaryMonitor }}
 {{- end }}
+
+# Primary (main): {{ .primaryMonitor }} at {{ .primaryResolution }}
+# Positioned after the portrait monitor (1440px wide after rotation)
+monitor = {{ .primaryMonitor }},{{ .primaryResolution }},1440x0,1
 
 {{- else }}
 # Laptop single monitor

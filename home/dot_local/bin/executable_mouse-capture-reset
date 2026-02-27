@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Force Hyprland to re-evaluate pointer focus/capture state.
+# "soft" avoids workspace churn; "hard" does a quick workspace flip-flop too.
+mode="${1:-soft}"
+
+hyprctl keyword input:follow_mouse 0 >/dev/null 2>&1 || true
+sleep 0.04
+hyprctl keyword input:follow_mouse 1 >/dev/null 2>&1 || true
+
+if [ "$mode" = "hard" ]; then
+  hyprctl dispatch workspace previous >/dev/null 2>&1 || true
+  sleep 0.06
+  hyprctl dispatch workspace previous >/dev/null 2>&1 || true
+fi

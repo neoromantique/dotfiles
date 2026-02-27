@@ -225,6 +225,7 @@ bind = $mainMod, t, togglegroup
 
 # VPN switcher
 bind = , F6, exec, ~/.local/bin/vpn-switcher
+bind = $mainMod CTRL, Escape, exec, ~/.local/bin/mouse-capture-reset hard
 
 # Move focus with mainMod + arrow keys
 bind = $mainMod, left, movefocus, l
@@ -243,22 +244,22 @@ bind = $mainMod, 7, workspace, 7
 bind = $mainMod, 8, workspace, 8
 bind = $mainMod, 9, workspace, 9
 
-# Special workspaces
+# Pinned utility workspaces
 bind = SUPER, F12, exec, ~/.local/bin/workspace-pin 1337
-bind = SUPER, A, togglespecialworkspace, org
-bind = SUPER SHIFT, A, movetoworkspace, special:org
+bind = SUPER, A, workspace, name:pin-org
+bind = SUPER SHIFT, A, movetoworkspace, name:pin-org
 
 # Quick Memo (QuickShell)
 bind = , F12, exec, touch /tmp/qs-memo-input
 bind = SHIFT, F12, exec, touch /tmp/qs-memo-clip
-bind = SUPER, X, togglespecialworkspace, media
-bind = SUPER SHIFT, X, movetoworkspacesilent, special:media
-bind = SUPER, C, togglespecialworkspace, tg
-bind = SUPER SHIFT, C, movetoworkspacesilent, special:tg
-bind = $mainMod, S, togglespecialworkspace, termius
-bind = $mainMod SHIFT, S, movetoworkspacesilent, special:termius
-bind = $mainMod, G, togglespecialworkspace, llm
-bind = $mainMod SHIFT, G, movetoworkspacesilent, special:llm
+bind = SUPER, X, workspace, name:pin-media
+bind = SUPER SHIFT, X, movetoworkspacesilent, name:pin-media
+bind = SUPER, C, workspace, name:pin-tg
+bind = SUPER SHIFT, C, movetoworkspacesilent, name:pin-tg
+bind = $mainMod, S, workspace, name:pin-termius
+bind = $mainMod SHIFT, S, movetoworkspacesilent, name:pin-termius
+bind = $mainMod, G, workspace, name:pin-llm
+bind = $mainMod SHIFT, G, movetoworkspacesilent, name:pin-llm
 
 # Move active window to workspace
 bind = $mainMod SHIFT, 1, movetoworkspacesilent, 1
@@ -279,8 +280,8 @@ bind = , Print, exec, ~/.local/bin/screenshot
 bind = $mainMod, mouse_down, workspace, e+1
 bind = $mainMod, mouse_up, workspace, e-1
 
-# Toggle llm workspace
-bind = , mouse:279, exec, ~/.local/bin/hypr-debounce 125 hyprctl dispatch togglespecialworkspace llm
+# Jump to llm pinned workspace
+bind = , mouse:279, exec, ~/.local/bin/hypr-debounce 125 hyprctl dispatch workspace name:pin-llm
 bind = , mouse:278, hyprexpo:expo, toggle
 bind = , mouse:277, exec, ~/.local/bin/hypr-debounce 125 hyprctl dispatch workspace previous
 
@@ -310,17 +311,17 @@ bindl = , XF86AudioPrev, exec, playerctl previous
 windowrule = match:class ^zen$, workspace 1
 windowrule = match:class ^chromium-work$, workspace 2
 windowrule = match:initial_class ^chromium-work$, workspace 2
-windowrule = match:class ^chromium-llm$, workspace special:llm
-windowrule = match:initial_class ^chromium-llm$, workspace special:llm
-windowrule = match:class ^(heynote|Heynote)$, workspace special:llm
-windowrule = match:class ^(org.telegram.desktop)$, workspace special:tg
-windowrule = match:class ^(discord)$, workspace special:tg
-windowrule = match:class ^Slack$, workspace special:tg
-windowrule = match:class ^org.mozilla.Thunderbird$, workspace special:tg
-windowrule = match:class ^spotify$, workspace special:media
-windowrule = match:initial_class ^spotify$, workspace special:media
-windowrule = match:class ^ticktick$, workspace special:org
-windowrule = match:initial_class ^ticktick$, workspace special:org
+windowrule = match:class ^chromium-llm$, workspace name:pin-llm
+windowrule = match:initial_class ^chromium-llm$, workspace name:pin-llm
+windowrule = match:class ^(heynote|Heynote)$, workspace name:pin-llm
+windowrule = match:class ^(org.telegram.desktop)$, workspace name:pin-tg
+windowrule = match:class ^(discord)$, workspace name:pin-tg
+windowrule = match:class ^Slack$, workspace name:pin-tg
+windowrule = match:class ^org.mozilla.Thunderbird$, workspace name:pin-tg
+windowrule = match:class ^spotify$, workspace name:pin-media
+windowrule = match:initial_class ^spotify$, workspace name:pin-media
+windowrule = match:class ^ticktick$, workspace name:pin-org
+windowrule = match:initial_class ^ticktick$, workspace name:pin-org
 windowrule = match:class .*, suppress_event maximize
 windowrule = match:class ^$, match:title ^$, match:xwayland true, match:float true, match:fullscreen false, match:pin false, no_focus on
 
@@ -330,7 +331,7 @@ windowrule = match:class ^$, match:title ^$, match:xwayland true, match:float tr
 
 plugin {
     hyprexpo {
-        columns = 4
+        columns = 3
         gap_size = 0
         bg_col = rgb(0f0f0f)
         workspace_method = first 1
