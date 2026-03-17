@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+loc="${1:-}"
+if [ -z "$loc" ]; then
+  echo '{}'
+  exit 0
+fi
+
+encoded="$(python3 - "$loc" <<'PY'
+import sys
+import urllib.parse
+
+print(urllib.parse.quote_plus(sys.argv[1]))
+PY
+)"
+
+curl -sf "wttr.in/${encoded}?format=j1" 2>/dev/null || echo '{}'

@@ -1,28 +1,31 @@
 # Autostart applications
 # Device: {{ .deviceProfile }}
 
+# DBus environment for portals & screen sharing
+exec-once = dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
+
 # Polkit agent (GUI password prompts)
-exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+exec-once = uwsm app -- /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 
 # XWayland support
-exec-once = xwayland-satellite
+exec-once = uwsm app -- xwayland-satellite
 
 # System tray & bar
-exec-once = nm-applet &
-exec-once = qs
+exec-once = uwsm app -- nm-applet
+exec-once = uwsm app -- qs
 
 # Notifications
-exec-once = swaync
+exec-once = uwsm app -- swaync
 
 # Wallpaper & idle
-exec-once = hyprpaper
-exec-once = hypridle
+exec-once = uwsm app -- hyprpaper
+exec-once = uwsm app -- hypridle
 
 # Clipboard
-exec-once = copyq --start-server
+exec-once = uwsm app -- copyq --start-server
 
 # User apps
-exec-once = zen-browser
+exec-once = uwsm app -- zen-browser
 exec-once = ~/.local/bin/launch-on-workspace 2 chromium-work chromium --profile-directory=Default --class=chromium-work
 exec-once = ~/.local/bin/launch-on-workspace "name:pin-llm" chromium-llm chromium --user-data-dir=$HOME/.config/chromium-llm --class=chromium-llm
 exec-once = ~/.local/bin/launch-on-workspace "name:pin-llm" Heynote heynote
@@ -33,6 +36,9 @@ exec-once = ~/.local/bin/launch-on-workspace "name:pin-media" spotify spotify
 exec-once = ~/.local/bin/launch-on-workspace "name:pin-org" ticktick ticktick
 
 {{- if eq .deviceProfile "desktop" }}
+# Desktop: ICC color profile for Phillips monitor (DP-2)
+exec-once = dispwin -d 2 ~/.config/hypr/phillips.icc
+
 # Desktop: Hyprland plugins
 exec-once = hyprpm reload -n
 {{- else }}

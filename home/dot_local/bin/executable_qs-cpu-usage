@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! read -r _ u1 n1 s1 i1 io1 irq1 sirq1 st1 _ < /proc/stat; then
+  echo "CPU --"
+  exit 0
+fi
+
+sleep 0.20
+
+if ! read -r _ u2 n2 s2 i2 io2 irq2 sirq2 st2 _ < /proc/stat; then
+  echo "CPU --"
+  exit 0
+fi
+
+used_delta=$(( (u2 - u1) + (n2 - n1) + (s2 - s1) + (irq2 - irq1) + (sirq2 - sirq1) + (st2 - st1) ))
+idle_delta=$(( (i2 - i1) + (io2 - io1) ))
+total_delta=$(( used_delta + idle_delta ))
+
+if [ "$total_delta" -le 0 ]; then
+  echo "CPU --"
+  exit 0
+fi
+
+pct=$(( used_delta * 100 / total_delta ))
+if [ "$pct" -lt 0 ]; then
+  pct=0
+elif [ "$pct" -gt 100 ]; then
+  pct=100
+fi
+
+printf 'CPU %d%%\n' "$pct"

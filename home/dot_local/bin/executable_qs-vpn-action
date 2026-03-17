@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -lt 1 ]; then
+  echo "usage: qs-vpn-action <action> [arg]" >&2
+  exit 2
+fi
+
+action="$1"
+shift
+
+helper="${HOME}/.local/bin/vpn-helper"
+
+disconnect_all_wg() {
+  local iface
+  while IFS= read -r iface; do
+    [ -n "${iface}" ] || continue
+    sudo "$helper" wg-down "$iface" 2>/dev/null || true
+  done < <(wg show interfaces 2>/dev/null | tr ' ' '\n')
+}
+
+case "$action" in
+  wg-down-config)
+    conf="${1:?missing config path}"
+    sudo "$helper" wg-down "$conf"
+    ;;
+  wg-up-config)
+    conf="${1:?missing config path}"
+    disconnect_all_wg
+    tailscale set --exit-node= 2>/dev/null || true
+    sudo "$helper" wg-up "$conf"
+    ;;
+  tailscale-switch)
+    id="${1:?missing tailscale account id}"
+    tailscale switch "$id"
+    ;;
+  tailscale-up)
+    tailscale up
+    ;;
+  tailscale-down)
+    tailscale down
+    ;;
+  tailscale-exit-off)
+    tailscale set --exit-node=
+    ;;
+  tailscale-exit)
+    ip="${1:?missing exit node ip}"
+    disconnect_all_wg
+    tailscale set --exit-node="$ip"
+    ;;
+  disconnect-all)
+    disconnect_all_wg
+    tailscale set --exit-node= 2>/dev/null || true
+    ;;
+  *)
+    echo "unknown action: $action" >&2
+    exit 2
+    ;;
+esac

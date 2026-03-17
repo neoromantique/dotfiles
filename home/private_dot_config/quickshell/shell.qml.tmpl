@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
+import "lib/qs_layout.js" as QsLayout
 
 ShellRoot {
   id: root
@@ -21,10 +22,13 @@ ShellRoot {
   property color infoColor: "#3498db"
   property color borderColor: "#333333"
   property color borderSubtle: "#2a2a2a"
+  property string qsBinDir: "{{ .chezmoi.homeDir }}/.local/bin"
+  property string qsConfigDir: "{{ .chezmoi.homeDir }}/.config/quickshell"
   property bool debugMode: {{- if eq (default "00" (env "DEBUG")) "1" }}true{{- else }}false{{- end }}
   property string debugLastEvent: "startup"
   property string debugLastEventAt: "--"
   property int debugEventCount: 0
+  property var shellQueue: []
 
   function debugNow() {
     return Qt.formatDateTime(new Date(), "HH:mm:ss.zzz")
@@ -39,15 +43,86 @@ ShellRoot {
   Process {
     id: shellExec
     running: false
+    onRunningChanged: {
+      if (!running)
+        Qt.callLater(root.runShellNext)
+    }
   }
 
   function runShell(cmd) {
+    var c = trim(cmd)
+    if (!c)
+      return
+    shellQueue.push(c)
+    runShellNext()
+  }
+
+  function runShellNext() {
+    if (shellExec.running || shellQueue.length === 0)
+      return
+    var cmd = shellQueue.shift()
     shellExec.command = ["/usr/bin/env", "bash", "-lc", cmd]
     shellExec.running = true
   }
 
   function trim(s) {
     return (s || "").toString().trim()
+  }
+
+  function saveJson(proc, fileName, value) {
+    proc.command = [qsBinDir + "/qs-json-write", qsConfigDir + "/" + fileName, JSON.stringify(value)]
+    proc.running = true
+  }
+
+  function parseJaxTodayLogNotes(raw, limit) {
+    var text = (raw || "").toString().replace(/\r/g, "")
+    if (!text.trim())
+      return []
+
+    var lines = text.split("\n")
+    var logStart = -1
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === "## Log") {
+        logStart = i + 1
+        break
+      }
+    }
+    if (logStart < 0)
+      return []
+
+    var items = []
+    var current = null
+    var today = Qt.formatDate(new Date(), "yyyy-MM-dd")
+    for (var j = logStart; j < lines.length; j++) {
+      var line = lines[j]
+      var t = line.trim()
+      if (t.indexOf("## ") === 0)
+        break
+      if (!t.length)
+        continue
+
+      var m = t.match(/^- \*\*([0-9]{2}:[0-9]{2})\*\*\s?(.*)$/)
+      if (m) {
+        if (current)
+          items.push(current)
+        current = {
+          ts: today + "T" + m[1] + ":00",
+          tsLabel: m[1],
+          text: m[2],
+          src: "jax"
+        }
+      } else if (current) {
+        current.text = current.text + "\n" + t
+      }
+    }
+    if (current)
+      items.push(current)
+
+    var maxItems = Math.max(1, parseInt(limit) || 50)
+    if (items.length > maxItems)
+      items = items.slice(items.length - maxItems)
+    items.reverse()
+    return items
   }
 
   property var wsNames: ({"1": "WEB", "2": "CODE", "3": "TERM", "4": "IDE", "5": "VM", "6": "GFX", "7": "DOC", "8": "GAME", "9": "MISC", "10": "TMP", "11": "AUX1", "12": "AUX2", "13": "AUX3", "14": "AUX4", "15": "AUX5", "pin-termius": "TERMIUS", "pin-org": "ORG", "pin-llm": "LLM", "pin-tg": "CHAT", "pin-media": "MUSIC"})
@@ -76,8 +151,7 @@ ShellRoot {
     var n = Object.assign({}, wsNames)
     n[key] = label
     wsNames = n
-    wsNamesSaver.command = ["/usr/bin/env", "bash", "-c", "echo '" + JSON.stringify(n) + "' > ~/.config/quickshell/ws-names.json"]
-    wsNamesSaver.running = true
+    saveJson(wsNamesSaver, "ws-names.json", n)
   }
 
   Process {
@@ -119,6 +193,20 @@ ShellRoot {
   property var wsGeneration: ({})
   property int wsGenCounter: 0
 
+  function wsSanitizeOrder(order) {
+    var inOrder = Array.isArray(order) ? order : []
+    var out = []
+    var seen = {}
+    for (var i = 0; i < inOrder.length; i++) {
+      var n = wsCanonicalName(inOrder[i])
+      if (!n || wsIgnored(n) || isPinnedWs(n) || seen[n])
+        continue
+      seen[n] = true
+      out.push(n)
+    }
+    return out
+  }
+
   function ensureWsOrder(name) {
     if (wsIgnored(name) || isPinnedWs(name)) return
     if (wsOrder.indexOf(name) === -1) {
@@ -145,7 +233,7 @@ ShellRoot {
     var o = wsVisibleOrder().filter(function(n) { return n !== dragName })
     if (dropIndex < 0) return
     o.splice(Math.min(dropIndex, o.length), 0, dragName)
-    wsOrder = o
+    wsOrder = wsSanitizeOrder(o)
     wsOrderSaveDebounce.restart()
   }
 
@@ -252,8 +340,7 @@ ShellRoot {
     interval: 500
     repeat: false
     onTriggered: {
-      wsOrderSaver.command = ["/usr/bin/env", "bash", "-c", "echo '" + JSON.stringify(root.wsOrder) + "' > ~/.config/quickshell/ws-order.json"]
-      wsOrderSaver.running = true
+      root.saveJson(wsOrderSaver, "ws-order.json", root.wsOrder)
     }
   }
 
@@ -266,7 +353,7 @@ ShellRoot {
         try {
           var loaded = JSON.parse((this.text || "[]").trim())
           if (Array.isArray(loaded) && loaded.length > 0) {
-            root.wsOrder = loaded.filter(function(n) { return !root.isPinnedWs(n) })
+            root.wsOrder = root.wsSanitizeOrder(loaded)
           }
         } catch(e) {}
       }
@@ -284,15 +371,12 @@ ShellRoot {
 
   function wtrFetch() {
     if (!wtrLocation) return
-    var loc = wtrLocation.replace(/ /g, "+")
-    wtrFetchProc.command = ["/usr/bin/env", "bash", "-c", "curl -sf 'wttr.in/" + loc + "?format=j1' 2>/dev/null || echo '{}'"]
+    wtrFetchProc.command = [qsBinDir + "/qs-weather-fetch", wtrLocation]
     wtrFetchProc.running = true
   }
 
   function wtrSaveSettings() {
-    var data = JSON.stringify({ location: wtrLocation, locations: wtrLocations })
-    wtrSettingsSaver.command = ["/usr/bin/env", "bash", "-c", "echo '" + data + "' > ~/.config/quickshell/wtr-settings.json"]
-    wtrSettingsSaver.running = true
+    saveJson(wtrSettingsSaver, "wtr-settings.json", { location: wtrLocation, locations: wtrLocations })
   }
 
   function wtrAddLocation(loc) {
@@ -483,7 +567,38 @@ ShellRoot {
                     property bool ignored: root.wsIgnored(wsName)
                     property bool pinned: root.isPinnedWs(wsName)
                     property bool isDragging: !pinned && workspacesBox.dragName === wsName
+                    property string trackedWsName: ""
                     property int wsGen: 0
+
+                    function registerWorkspace(name) {
+                      if (!name || root.wsIgnored(name))
+                        return
+                      root.wsGenCounter++
+                      wsGen = root.wsGenCounter
+                      trackedWsName = name
+                      var g = Object.assign({}, root.wsGeneration)
+                      g[name] = wsGen
+                      root.wsGeneration = g
+                      var w = Object.assign({}, root.wsWidths)
+                      w[name] = width
+                      root.wsWidths = w
+                      root.ensureWsOrder(name)
+                    }
+
+                    function unregisterWorkspace(name) {
+                      if (!name || root.wsIgnored(name))
+                        return
+                      if (root.wsGeneration[name] === wsGen) {
+                        var w = Object.assign({}, root.wsWidths)
+                        delete w[name]
+                        root.wsWidths = w
+                        var g = Object.assign({}, root.wsGeneration)
+                        delete g[name]
+                        root.wsGeneration = g
+                      }
+                      if (trackedWsName === name)
+                        trackedWsName = ""
+                    }
 
                     visible: !ignored
                     color: modelData.urgent ? root.critColor : "transparent"
@@ -513,33 +628,31 @@ ShellRoot {
                         var w = Object.assign({}, root.wsWidths)
                         w[wsName] = width
                         root.wsWidths = w
-                      }
-                    }
-
-                    Component.onCompleted: {
-                      if (!ignored) {
-                        root.wsGenCounter++
-                        wsGen = root.wsGenCounter
-                        var g = Object.assign({}, root.wsGeneration)
-                        g[wsName] = wsGen
-                        root.wsGeneration = g
-                        var w = Object.assign({}, root.wsWidths)
-                        w[wsName] = width
-                        root.wsWidths = w
                         root.ensureWsOrder(wsName)
                       }
                     }
 
+                    onWsNameChanged: {
+                      if (trackedWsName && trackedWsName !== wsName)
+                        unregisterWorkspace(trackedWsName)
+                      if (!ignored)
+                        registerWorkspace(wsName)
+                    }
+
+                    onIgnoredChanged: {
+                      if (ignored)
+                        unregisterWorkspace(wsName)
+                      else
+                        registerWorkspace(wsName)
+                    }
+
+                    Component.onCompleted: {
+                      if (!ignored)
+                        registerWorkspace(wsName)
+                    }
+
                     Component.onDestruction: {
-                      var n = wsName
-                      if (n && !root.wsIgnored(n) && root.wsGeneration[n] === wsGen) {
-                        var w = Object.assign({}, root.wsWidths)
-                        delete w[n]
-                        root.wsWidths = w
-                        var g = Object.assign({}, root.wsGeneration)
-                        delete g[n]
-                        root.wsGeneration = g
-                      }
+                      unregisterWorkspace(trackedWsName || wsName)
                     }
 
                     Text {
@@ -598,7 +711,7 @@ ShellRoot {
                         if (mouse.button === Qt.RightButton) {
                           root.debugRecord("ws-rename-open " + wsName)
                           wsRenamePopup.wsId = wsName
-                          wsRenamePopup.renameX = mapToItem(null, 0, 0).x
+                          wsRenamePopup.renameX = QsLayout.workspaceRenameX(parent.x, 4, 6, wsRenamePopup.renameWidth, panel.width)
                           wsRenamePopup.visible = true
                           wsRenameInput.text = root.wsLabelFor(wsName)
                           wsRenameInput.selectAll()
@@ -1133,9 +1246,7 @@ ShellRoot {
               }
 
               function saveSettings() {
-                pomSettingsSaver.command = ["/usr/bin/env", "bash", "-c",
-                  "echo '" + JSON.stringify({work: workMins, brk: breakMins, lng: longBreakMins}) + "' > ~/.config/quickshell/pom-settings.json"]
-                pomSettingsSaver.running = true
+                root.saveJson(pomSettingsSaver, "pom-settings.json", {work: workMins, brk: breakMins, lng: longBreakMins})
               }
 
               Process {
@@ -1222,10 +1333,10 @@ ShellRoot {
 
               Process {
                 id: memoCountProc
-                command: ["/usr/bin/env", "bash", "-c", "today=$(date +%Y-%m-%d); grep -c \"$today\" ~/.local/share/quickmemo/notes.jsonl 2>/dev/null || echo 0"]
+                command: ["/usr/bin/env", "bash", "-c", "command -v jax-pad &>/dev/null && jax-pad journal --date \"$(date +%F)\" 2>/dev/null || true"]
                 running: true
                 stdout: StdioCollector {
-                  onStreamFinished: memoBox.todayCount = parseInt(root.trim(this.text)) || 0
+                  onStreamFinished: memoBox.todayCount = root.parseJaxTodayLogNotes(this.text || "", 500).length
                 }
               }
 
@@ -1301,7 +1412,7 @@ ShellRoot {
 
               Process {
                 id: cpuProc
-                command: ["/usr/bin/env", "bash", "-lc", "read -r _ u n s i _ < /proc/stat; used=$((u+n+s)); total=$((u+n+s+i)); if [ \"$total\" -gt 0 ]; then printf 'CPU %d%%\\n' $((used*100/total)); else echo 'CPU --'; fi"]
+                command: [root.qsBinDir + "/qs-cpu-usage"]
                 running: true
                 stdout: StdioCollector {
                   onStreamFinished: {
@@ -1572,7 +1683,11 @@ ShellRoot {
 
       Process {
         id: memoTriggerCheck
-        command: ["/usr/bin/env", "bash", "-c", "r=''; [ -f /tmp/qs-memo-input ] && rm /tmp/qs-memo-input && r=\"input\n\"; [ -f /tmp/qs-memo-clip ] && rm /tmp/qs-memo-clip && r=\"${r}clipboard\"; printf '%s' \"$r\""]
+        command: ["/usr/bin/env", "bash", "-c",
+          "r=''; mon='" + ((panel.hyprMonitor && panel.hyprMonitor.name) ? panel.hyprMonitor.name : ((panel.screen && panel.screen.name) ? panel.screen.name : "")) + "'; " +
+          "check(){ f=\"$1\"; mode=\"$2\"; [ -f \"$f\" ] || return; tgt=$(head -n1 \"$f\" 2>/dev/null || true); " +
+          "if [ -z \"$tgt\" ] || [ \"$tgt\" = \"any\" ] || [ \"$tgt\" = \"$mon\" ]; then rm -f \"$f\"; r=\"${r}${mode}\\n\"; fi; }; " +
+          "check /tmp/qs-memo-input input; check /tmp/qs-memo-clip clipboard; printf '%s' \"$r\""]
         running: false
         stdout: StdioCollector {
           onStreamFinished: {
@@ -1595,26 +1710,66 @@ ShellRoot {
         stdout: StdioCollector {
           onStreamFinished: {
             var text = (this.text || "").trim()
-            if (text) {
+            if (text)
               panel.memoSave(text, "clipboard")
-              root.runShell("notify-send -r 91192 -t 2000 'Quick Memo' 'Clipboard saved'")
-            }
           }
         }
       }
 
+      property var memoJaxQueue: []
+      property string memoJaxActiveSrc: "input"
+
+      function memoSendToJax(text, src) {
+        memoJaxQueue.push({ text: text, src: src || "input" })
+        memoSendToJaxNext()
+      }
+
+      function memoSendToJaxNext() {
+        if (memoJaxSendProc.running || memoJaxQueue.length === 0)
+          return
+        var item = memoJaxQueue.shift()
+        memoJaxActiveSrc = item.src || "input"
+        var textB64 = Qt.btoa(item.text || "")
+        memoJaxSendProc.command = ["/usr/bin/env", "bash", "-lc",
+          "txt=$(printf '%s' \"$1\" | base64 -d); " +
+          "if ! command -v jax-pad &>/dev/null; then printf 'MISSING\\n'; exit 0; fi; " +
+          "if out=$(jax-pad note \"$txt\" 2>&1); then printf 'OK\\n%s\\n' \"$out\"; else printf 'ERR\\n%s\\n' \"$out\"; fi",
+          "_", textB64]
+        memoJaxSendProc.running = true
+      }
+
       function memoSave(text, src) {
-        var entry = JSON.stringify({ts: new Date().toISOString(), text: text, src: src || "input"})
-        var b64 = Qt.btoa(entry)
-        memoSaveProc.command = ["/usr/bin/env", "bash", "-c",
-          "mkdir -p ~/.local/share/quickmemo && printf '%s' " + b64 + " | base64 -d >> ~/.local/share/quickmemo/notes.jsonl && printf '\\n' >> ~/.local/share/quickmemo/notes.jsonl"]
-        memoSaveProc.running = true
-        memoBox.todayCount++
+        memoSendToJax(text, src || "input")
       }
 
       Process {
-        id: memoSaveProc
+        id: memoJaxSendProc
         running: false
+        stdout: StdioCollector {
+          onStreamFinished: {
+            var out = root.trim(this.text)
+            var status = ""
+            if (out.length > 0)
+              status = root.trim(out.split("\n")[0])
+            if (status === "OK") {
+              memoCountProc.running = true
+              if (memoInput.visible)
+                memoInput.refresh()
+              if (memoReview.visible)
+                memoReview.refresh()
+              if (panel.memoJaxActiveSrc === "clipboard")
+                root.runShell("notify-send -r 91192 -t 2000 'Quick Memo' 'Clipboard saved to jax-pad'")
+            } else if (status === "MISSING") {
+              root.runShell("notify-send -r 91192 -t 3000 -u critical 'Quick Memo' 'jax-pad CLI not found'")
+            } else {
+              root.runShell("notify-send -r 91192 -t 3000 -u critical 'Quick Memo' 'Failed to send to jax-pad'")
+            }
+          }
+        }
+        onRunningChanged: {
+          if (!running)
+            panel.memoSendToJaxNext()
+        }
       }
 
       PanelWindow {
@@ -1660,7 +1815,7 @@ ShellRoot {
         }
 
         function setDefault(name) {
-          sinkActionProc.command = ["/usr/bin/env", "bash", "-c", "pactl set-default-sink '" + name + "'"]
+          sinkActionProc.command = ["/usr/bin/env", "pactl", "set-default-sink", name]
           sinkActionProc.running = true
           visible = false
           sinkRefreshTimer.running = true
@@ -1798,7 +1953,7 @@ ShellRoot {
         }
 
         function setDefault(name) {
-          sourceActionProc.command = ["/usr/bin/env", "bash", "-c", "pactl set-default-source '" + name + "'"]
+          sourceActionProc.command = ["/usr/bin/env", "pactl", "set-default-source", name]
           sourceActionProc.running = true
           visible = false
           sourceRefreshTimer.running = true
@@ -2531,6 +2686,7 @@ ShellRoot {
 
         property string wsId: ""
         property real renameX: 0
+        property int renameWidth: 180
 
         MouseArea {
           anchors.fill: parent
@@ -2540,7 +2696,7 @@ ShellRoot {
         Rectangle {
           x: wsRenamePopup.renameX
           y: parent.height - 72
-          width: 180
+          width: wsRenamePopup.renameWidth
           height: 26
           color: root.bgColor
           border.width: 1
@@ -2658,8 +2814,11 @@ ShellRoot {
           tsExits = exits
         }
 
-        function vpnAction(cmd) {
-          vpnActionProc.command = ["/usr/bin/env", "bash", "-c", cmd]
+        function vpnAction(action, arg) {
+          var cmd = [root.qsBinDir + "/qs-vpn-action", action]
+          if (arg !== undefined && arg !== null && arg !== "")
+            cmd.push(arg.toString())
+          vpnActionProc.command = cmd
           vpnActionProc.running = true
           visible = false
           vpnRefreshTimer.running = true
@@ -2672,7 +2831,7 @@ ShellRoot {
 
         Process {
           id: popupWgProc
-          command: ["/usr/bin/env", "bash", "-c", "echo '---C---'; vpndir='{{ .secretsPath }}/vpn'; [ -d \"$vpndir\" ] || vpndir=\"$HOME/cfg/vpn\"; for f in \"$vpndir\"/*.conf; do [ -f \"$f\" ] && basename \"$f\" .conf; done; echo '---A---'; wg show interfaces 2>/dev/null || true"]
+          command: ["/usr/bin/env", "bash", "-c", "echo '---C---'; vpndir='{{ .secretsPath | replace "~" .chezmoi.homeDir }}/vpn'; [ -d \"$vpndir\" ] || vpndir=\"$HOME/cfg/vpn\"; for f in \"$vpndir\"/*.conf; do [ -f \"$f\" ] && basename \"$f\" .conf; done; echo '---A---'; wg show interfaces 2>/dev/null || true"]
           running: false
           stdout: StdioCollector {
             onStreamFinished: {
@@ -2767,11 +2926,11 @@ ShellRoot {
                   anchors.fill: parent
                   hoverEnabled: true
                   onClicked: {
-                    var dir = "{{ .secretsPath }}/vpn"
+                    var dir = "{{ .secretsPath | replace "~" .chezmoi.homeDir }}/vpn"
                     if (parent.active) {
-                      vpnPopup.vpnAction("sudo ~/.local/bin/vpn-helper wg-down \"" + dir + "/" + modelData + ".conf\"")
+                      vpnPopup.vpnAction("wg-down-config", dir + "/" + modelData + ".conf")
                     } else {
-                      vpnPopup.vpnAction("for i in $(wg show interfaces 2>/dev/null); do sudo ~/.local/bin/vpn-helper wg-down \"$i\" 2>/dev/null; done; tailscale set --exit-node= 2>/dev/null; sudo ~/.local/bin/vpn-helper wg-up \"" + dir + "/" + modelData + ".conf\"")
+                      vpnPopup.vpnAction("wg-up-config", dir + "/" + modelData + ".conf")
                     }
                   }
                 }
@@ -2812,7 +2971,7 @@ ShellRoot {
                   hoverEnabled: true
                   onClicked: {
                     if (!modelData.active)
-                      vpnPopup.vpnAction("tailscale switch '" + modelData.id + "'")
+                      vpnPopup.vpnAction("tailscale-switch", modelData.id)
                   }
                 }
               }
@@ -2838,7 +2997,7 @@ ShellRoot {
                 id: tsStartMouse
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: vpnPopup.vpnAction("tailscale up")
+                onClicked: vpnPopup.vpnAction("tailscale-up")
               }
             }
 
@@ -2872,7 +3031,7 @@ ShellRoot {
                 id: exitOffMouse
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: vpnPopup.vpnAction("tailscale set --exit-node=")
+                onClicked: vpnPopup.vpnAction("tailscale-exit-off")
               }
             }
 
@@ -2899,9 +3058,7 @@ ShellRoot {
                   id: exitNodeMouse
                   anchors.fill: parent
                   hoverEnabled: true
-                  onClicked: {
-                    vpnPopup.vpnAction("for i in $(wg show interfaces 2>/dev/null); do sudo ~/.local/bin/vpn-helper wg-down \"$i\" 2>/dev/null; done; tailscale set --exit-node='" + modelData.ip + "'")
-                  }
+                  onClicked: vpnPopup.vpnAction("tailscale-exit", modelData.ip)
                 }
               }
             }
@@ -2926,7 +3083,7 @@ ShellRoot {
                 id: tsStopMouse
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: vpnPopup.vpnAction("tailscale down")
+                onClicked: vpnPopup.vpnAction("tailscale-down")
               }
             }
 
@@ -2955,9 +3112,7 @@ ShellRoot {
                 id: disconnAllMouse
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: {
-                  vpnPopup.vpnAction("for i in $(wg show interfaces 2>/dev/null); do sudo ~/.local/bin/vpn-helper wg-down \"$i\" 2>/dev/null; done; tailscale set --exit-node= 2>/dev/null || true")
-                }
+                onClicked: vpnPopup.vpnAction("disconnect-all")
               }
             }
           }
@@ -3278,19 +3433,7 @@ ShellRoot {
         }
 
         function parseNotes(raw) {
-          var lines = raw.split("\n").filter(function(l) { return l.trim() })
-          var items = []
-          for (var i = lines.length - 1; i >= 0 && items.length < 8; i--) {
-            try { items.push(JSON.parse(lines[i])) } catch(e) {}
-          }
-          if (items.length === 0 && raw.trim().length > 0) {
-            var stitched = raw.replace(/}\s*{/g, "}\n{")
-            var fallbackLines = stitched.split("\n").filter(function(l) { return l.trim() })
-            for (var j = fallbackLines.length - 1; j >= 0 && items.length < 8; j--) {
-              try { items.push(JSON.parse(fallbackLines[j])) } catch(e2) {}
-            }
-          }
-          notes = items
+          notes = root.parseJaxTodayLogNotes(raw, 8)
         }
 
         function fmtRelative(iso) {
@@ -3319,7 +3462,7 @@ ShellRoot {
 
         Process {
           id: memoInlineLoadProc
-          command: ["/usr/bin/env", "bash", "-c", "cat ~/.local/share/quickmemo/notes.jsonl 2>/dev/null || true"]
+          command: ["/usr/bin/env", "bash", "-c", "command -v jax-pad &>/dev/null && jax-pad journal --date \"$(date +%F)\" 2>/dev/null || true"]
           running: false
           stdout: StdioCollector {
             onStreamFinished: memoInput.parseNotes((this.text || "").trim())
@@ -3572,12 +3715,7 @@ ShellRoot {
         }
 
         function parseNotes(raw) {
-          var lines = raw.split("\n").filter(function(l) { return l.trim() })
-          var items = []
-          for (var i = lines.length - 1; i >= 0 && items.length < 50; i--) {
-            try { items.push(JSON.parse(lines[i])) } catch(e) {}
-          }
-          notes = items
+          notes = root.parseJaxTodayLogNotes(raw, 50)
         }
 
         function fmtTs(iso) {
@@ -3587,7 +3725,7 @@ ShellRoot {
 
         Process {
           id: memoLoadProc
-          command: ["/usr/bin/env", "bash", "-c", "cat ~/.local/share/quickmemo/notes.jsonl 2>/dev/null || true"]
+          command: ["/usr/bin/env", "bash", "-c", "command -v jax-pad &>/dev/null && jax-pad journal --date \"$(date +%F)\" 2>/dev/null || true"]
           running: false
           stdout: StdioCollector {
             onStreamFinished: memoReview.parseNotes((this.text || "").trim())
@@ -3701,8 +3839,9 @@ ShellRoot {
                       anchors.fill: parent
                       hoverEnabled: true
                       onClicked: {
-                        memoClipCopy.command = ["/usr/bin/env", "bash", "-c",
-                          "echo " + Qt.btoa(modelData.text) + " | base64 -d | wl-copy"]
+                        var textB64 = Qt.btoa(modelData.text || "")
+                        memoClipCopy.command = ["/usr/bin/env", "bash", "-lc",
+                          "printf '%s' \"$1\" | base64 -d | wl-copy", "_", textB64]
                         memoClipCopy.running = true
                         root.runShell("notify-send -r 91192 -t 1500 'Quick Memo' 'Copied to clipboard'")
                       }

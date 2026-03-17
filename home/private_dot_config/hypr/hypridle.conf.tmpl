@@ -5,13 +5,21 @@
 general {
     lock_cmd = hyprctl switchxkblayout all 0; pidof hyprlock || hyprlock
     before_sleep_cmd = loginctl lock-session
-    after_sleep_cmd = hyprctl dispatch dpms on; sleep 1; hyprctl keyword monitor {{ .primaryMonitor }},{{ .primaryResolution }},0x0,1
+{{- if .hasMultipleMonitors }}
+    after_sleep_cmd = hyprctl dispatch dpms on; sleep 1; hyprctl keyword monitor {{ .secondaryMonitor }},{{ .secondaryResolution }},0x-992,1,transform,1 && hyprctl keyword monitor {{ .primaryMonitor }},{{ .primaryResolution }},1440x0,1
+{{- else }}
+    after_sleep_cmd = hyprctl dispatch dpms on; sleep 1; hyprctl keyword monitor {{ .primaryMonitor }},{{ .primaryResolution }},auto,1
+{{- end }}
 }
 
 listener {
     timeout = {{ .idleTimeout }}
     on-timeout = hyprctl dispatch dpms off
-    on-resume = hyprctl dispatch dpms on; sleep 1; hyprctl keyword monitor {{ .primaryMonitor }},{{ .primaryResolution }},0x0,1
+{{- if .hasMultipleMonitors }}
+    on-resume = hyprctl dispatch dpms on; sleep 1; hyprctl keyword monitor {{ .secondaryMonitor }},{{ .secondaryResolution }},0x-992,1,transform,1 && hyprctl keyword monitor {{ .primaryMonitor }},{{ .primaryResolution }},1440x0,1
+{{- else }}
+    on-resume = hyprctl dispatch dpms on; sleep 1; hyprctl keyword monitor {{ .primaryMonitor }},{{ .primaryResolution }},auto,1
+{{- end }}
 }
 
 {{- if .hasBattery }}

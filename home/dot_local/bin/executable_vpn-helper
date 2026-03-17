@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 # Helper script for vpn-switcher to run privileged commands
 # This gets called via pkexec
 

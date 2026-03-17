@@ -11,6 +11,9 @@ monitor = {{ .secondaryMonitor }},{{ .secondaryResolution }},0x-992,1,transform,
 # Pin LLM and Chat workspaces to the portrait monitor
 workspace = name:pin-llm, monitor:{{ .secondaryMonitor }}
 workspace = name:pin-tg, monitor:{{ .secondaryMonitor }}
+
+# Keep the default web workspace on the widescreen
+workspace = 1, monitor:{{ .primaryMonitor }}
 {{- end }}
 
 # Primary (main): {{ .primaryMonitor }} at {{ .primaryResolution }}

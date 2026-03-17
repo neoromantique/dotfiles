@@ -36,10 +36,17 @@ hypr-reload:
 fix-res:
     #!/usr/bin/env bash
     set -euo pipefail
-    mon=$(chezmoi execute-template '{{ "{{" }} .primaryMonitor {{ "}}" }}')
-    res=$(chezmoi execute-template '{{ "{{" }} .primaryResolution {{ "}}" }}')
-    echo "Applying $res to $mon"
-    hyprctl keyword monitor "$mon,$res,0x0,1"
+    chezmoi apply ~/.config/hypr/monitors.conf
+    batch=""
+    while IFS= read -r line; do
+        line=$(echo "$line" | xargs)
+        [[ -z "$line" || "$line" == \#* ]] && continue
+        [[ "$line" == monitor* ]] || continue
+        rule="${line#monitor = }"
+        echo "Applying: $rule"
+        batch+="keyword monitor $rule;"
+    done < ~/.config/hypr/monitors.conf
+    hyprctl --batch "$batch"
 
 # Combined helpers
 apply-niri: apply niri-validate niri-reload

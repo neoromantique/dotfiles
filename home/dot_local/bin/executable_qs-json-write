@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+  echo "usage: qs-json-write <path> <json>" >&2
+  exit 2
+fi
+
+path="$1"
+payload="$2"
+
+mkdir -p "$(dirname "$path")"
+printf '%s' "$payload" > "$path"

@@ -250,8 +250,8 @@ bind = SUPER, A, workspace, name:pin-org
 bind = SUPER SHIFT, A, movetoworkspace, name:pin-org
 
 # Quick Memo (QuickShell)
-bind = , F12, exec, touch /tmp/qs-memo-input
-bind = SHIFT, F12, exec, touch /tmp/qs-memo-clip
+bind = , F12, exec, bash -lc 'm=$(hyprctl activeworkspace -j 2>/dev/null | jq -r ".monitor // empty"); printf "%s\n" "${m:-any}" > /tmp/qs-memo-input'
+bind = SHIFT, F12, exec, bash -lc 'm=$(hyprctl activeworkspace -j 2>/dev/null | jq -r ".monitor // empty"); printf "%s\n" "${m:-any}" > /tmp/qs-memo-clip'
 bind = SUPER, X, workspace, name:pin-media
 bind = SUPER SHIFT, X, movetoworkspacesilent, name:pin-media
 bind = SUPER, C, workspace, name:pin-tg
