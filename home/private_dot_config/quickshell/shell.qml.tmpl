@@ -1,3 +1,4 @@
+//@ pragma UseQApplication
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
@@ -1531,6 +1532,10 @@ ShellRoot {
                     implicitWidth: 18
                     implicitHeight: 18
 
+                    function trayClickPos(localX, localY) {
+                      return mapToItem(null, localX, localY)
+                    }
+
                     IconImage {
                       anchors.fill: parent
                       source: modelData.icon
@@ -1542,9 +1547,13 @@ ShellRoot {
                       acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                       onClicked: function(mouse) {
                         if (mouse.button === Qt.RightButton && modelData.hasMenu) {
-                          modelData.display(panel, mouse.x, mouse.y)
+                          var pos = parent.trayClickPos(mouse.x, mouse.y)
+                          modelData.display(panel, pos.x, pos.y)
                         } else if (mouse.button === Qt.MiddleButton) {
                           modelData.secondaryActivate()
+                        } else if (modelData.onlyMenu && modelData.hasMenu) {
+                          var menuPos = parent.trayClickPos(width / 2, height)
+                          modelData.display(panel, menuPos.x, menuPos.y)
                         } else {
                           modelData.activate()
                         }
