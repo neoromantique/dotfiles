@@ -45,19 +45,13 @@
     # Device-specific configuration
     {{- if eq $deviceProfile "desktop" }}
     primaryMonitor = "DP-2"
-    secondaryMonitor = "DP-1"
     primaryResolution = "3440x1440@100"
-    secondaryResolution = "2560x1440@60"
-    hasMultipleMonitors = true
     hasTouchpad = false
     hasBattery = false
     idleTimeout = 300
     {{- else if eq $deviceProfile "laptop" }}
     primaryMonitor = "eDP-1"
-    secondaryMonitor = ""
     primaryResolution = "preferred"
-    secondaryResolution = ""
-    hasMultipleMonitors = false
     hasTouchpad = true
     hasBattery = true
     idleTimeout = 180

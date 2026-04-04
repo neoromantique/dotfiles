@@ -1,29 +1,8 @@
 # Monitor Configuration
 # Device: {{ .deviceProfile }} ({{ .hostname }})
 
-{{- if eq .deviceProfile "desktop" }}
-# Desktop dual-monitor setup
-{{- if .secondaryMonitor }}
-# Secondary (portrait, left): {{ .secondaryMonitor }} at {{ .secondaryResolution }}, rotated 90°
-# Bottom-aligned with primary, Dell 5% lower (128px overhang)
-monitor = {{ .secondaryMonitor }},{{ .secondaryResolution }},0x-992,1,transform,1
-
-# Pin LLM and Chat workspaces to the portrait monitor
-workspace = name:pin-llm, monitor:{{ .secondaryMonitor }}
-workspace = name:pin-tg, monitor:{{ .secondaryMonitor }}
-
-# Keep the default web workspace on the widescreen
-workspace = 1, monitor:{{ .primaryMonitor }}
-{{- end }}
-
-# Primary (main): {{ .primaryMonitor }} at {{ .primaryResolution }}
-# Positioned after the portrait monitor (1440px wide after rotation)
-monitor = {{ .primaryMonitor }},{{ .primaryResolution }},1440x0,1
-
-{{- else }}
-# Laptop single monitor
+# Primary monitor only (widescreen)
 monitor = {{ .primaryMonitor }},{{ .primaryResolution }},auto,1
 
-# External displays (when docked)
+# External displays (when connected)
 monitor = ,preferred,auto,1
-{{- end }}
