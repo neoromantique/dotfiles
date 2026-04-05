@@ -1,0 +1,788 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import queue
+import re
+import signal
+import socket
+import subprocess
+import sys
+import threading
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable
+
+import tkinter as tk
+from tkinter import font as tkfont
+
+
+APP_NAME = "i3-workspace-switch"
+SOCKET_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/{os.getuid()}")) / f"{APP_NAME}.sock"
+BG_COLOR = "#111111"
+PANEL_COLOR = "#191919"
+PANEL_BORDER = "#303030"
+IDLE_TILE = "#242424"
+HOT_TILE = "#e67e22"
+HOT_TEXT = "#111111"
+IDLE_TEXT = "#e0e0e0"
+CURRENT_TILE = "#323232"
+CURRENT_TEXT = "#ffffff"
+SUBTEXT = "#a8a8a8"
+WINDOW_WIDTH = 732
+WINDOW_HEIGHT = 468
+TILE_GAP = 1
+PANEL_PADDING_X = 10
+PANEL_PADDING_Y = 10
+HEADER_HEIGHT = 42
+PIN_HEADER_HEIGHT = 26
+PIN_SECTION_GAP = 10
+ENTRY_GRACE_SECONDS = 0.15
+POINTER_POLL_MS = 8
+
+
+@dataclass
+class Workspace:
+    num: int | None
+    name: str
+    short_label: str
+    is_current: bool = False
+
+
+@dataclass
+class Tile:
+    workspace: Workspace
+    x: int
+    y: int
+    width: int
+    height: int
+    shape_id: int
+    title_id: int
+    subtitle_id: int
+
+    def contains(self, px: int, py: int) -> bool:
+        return self.x <= px <= self.x + self.width and self.y <= py <= self.y + self.height
+
+
+class WorkspaceModel:
+    def __init__(self) -> None:
+        self.last_main: list[Workspace] = []
+        self.last_pins: list[Workspace] = []
+
+    def load(self) -> tuple[list[Workspace], list[Workspace]]:
+        workspaces, pins = self._from_i3_config()
+        active_name = None
+        active_map = {}
+
+        try:
+            raw = subprocess.run(
+                ["i3-msg", "-t", "get_workspaces"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            active_map = {item["name"]: item for item in json.loads(raw.stdout)}
+            for item in active_map.values():
+                if item.get("focused"):
+                    active_name = item["name"]
+                    break
+        except Exception:
+            active_map = {}
+
+        if not workspaces:
+            workspaces = self._from_i3_runtime(active_map)
+
+        if not workspaces:
+            workspaces = self._fallback()
+
+        for ws in workspaces:
+            ws.is_current = ws.name == active_name
+        for ws in pins:
+            ws.is_current = ws.name == active_name
+
+        self.last_main = workspaces
+        self.last_pins = pins
+        return workspaces, pins
+
+    def _from_i3_runtime(self, active_map: dict[str, dict]) -> list[Workspace]:
+        items: list[Workspace] = []
+        sort_key = lambda item: (item.get("num", 9999), item.get("name", ""))
+
+        for item in sorted(active_map.values(), key=sort_key):
+            name = item.get("name", "").strip()
+            if not name:
+                continue
+            items.append(
+                Workspace(
+                    num=item.get("num"),
+                    name=name,
+                    short_label=compact_workspace_label(name),
+                )
+            )
+
+        return items[:9]
+
+    def _from_i3_config(self) -> tuple[list[Workspace], list[Workspace]]:
+        candidates = [
+            Path.home() / ".config" / "i3" / "config",
+            Path.home() / ".config" / "i3" / "config.tmpl",
+            Path.cwd() / "home" / "private_dot_config" / "i3" / "config.tmpl",
+        ]
+        config_path = next((path for path in candidates if path.exists()), None)
+        if config_path is None:
+            return [], []
+
+        pattern = re.compile(r'^\s*set\s+\$ws(\d+)\s+"([^"]+)"')
+        pin_pattern = re.compile(r'^\s*set\s+\$(pin_[A-Za-z0-9_]+)\s+"([^"]+)"')
+        items: dict[int, Workspace] = {}
+        pins: list[Workspace] = []
+
+        try:
+            for line in config_path.read_text(encoding="utf-8").splitlines():
+                match = pattern.match(line)
+                if match is not None:
+                    slot = int(match.group(1))
+                    if 1 <= slot <= 9:
+                        name = match.group(2).strip()
+                        items[slot] = Workspace(
+                            num=slot,
+                            name=name,
+                            short_label=compact_workspace_label(name),
+                        )
+                    continue
+
+                pin_match = pin_pattern.match(line)
+                if pin_match is not None:
+                    name = pin_match.group(2).strip()
+                    pins.append(
+                        Workspace(
+                            num=None,
+                            name=name,
+                            short_label=compact_pin_label(name),
+                        )
+                    )
+        except OSError:
+            return [], []
+
+        return [items[index] for index in sorted(items)], pins
+
+    def _fallback(self) -> list[Workspace]:
+        return [
+            Workspace(num=index, name=str(index), short_label=str(index))
+            for index in range(1, 10)
+        ]
+
+
+def compact_workspace_label(name: str) -> str:
+    if ":" in name:
+        _, tail = name.split(":", 1)
+        trimmed = tail.strip()
+        return trimmed if trimmed else name.strip()
+    return name.strip()
+
+
+def compact_pin_label(name: str) -> str:
+    label = name.strip()
+    if label.startswith("pin-"):
+        label = label[4:]
+    return label.replace("-", " ").upper()
+
+
+class CommandServer(threading.Thread):
+    def __init__(self, enqueue: Callable[[str], None]) -> None:
+        super().__init__(daemon=True)
+        self.enqueue = enqueue
+        self.sock: socket.socket | None = None
+        self._stop = threading.Event()
+
+    def run(self) -> None:
+        SOCKET_PATH.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            if SOCKET_PATH.exists():
+                SOCKET_PATH.unlink()
+        except FileNotFoundError:
+            pass
+
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.bind(str(SOCKET_PATH))
+        os.chmod(SOCKET_PATH, 0o600)
+        self.sock.listen(8)
+        self.sock.settimeout(0.5)
+
+        while not self._stop.is_set():
+            try:
+                conn, _ = self.sock.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+
+            with conn:
+                try:
+                    payload = conn.recv(128).decode("utf-8").strip()
+                except OSError:
+                    continue
+                if payload:
+                    self.enqueue(payload)
+
+    def close(self) -> None:
+        self._stop.set()
+        if self.sock is not None:
+            try:
+                self.sock.close()
+            except OSError:
+                pass
+        try:
+            if SOCKET_PATH.exists():
+                SOCKET_PATH.unlink()
+        except FileNotFoundError:
+            pass
+
+
+class ReleaseWatcher(threading.Thread):
+    def __init__(self, enqueue: Callable[[tuple[str, int]], None]) -> None:
+        super().__init__(daemon=True)
+        self.enqueue = enqueue
+        self._stop = threading.Event()
+        self.proc: subprocess.Popen[str] | None = None
+
+    def run(self) -> None:
+        try:
+            self.proc = subprocess.Popen(
+                ["xinput", "test-xi2", "--root"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                bufsize=1,
+            )
+        except OSError:
+            return
+
+        current_event = ""
+        current_detail: int | None = None
+
+        try:
+            assert self.proc.stdout is not None
+            for line in self.proc.stdout:
+                if self._stop.is_set():
+                    break
+
+                stripped = line.strip()
+                if stripped.startswith("EVENT type"):
+                    current_event = stripped
+                    current_detail = None
+                elif stripped.startswith("detail:"):
+                    try:
+                        current_detail = int(stripped.split(":", 1)[1].strip())
+                    except ValueError:
+                        current_detail = None
+                elif stripped == "" and "RawButtonRelease" in current_event and current_detail is not None:
+                    self.enqueue(("release", current_detail))
+                    current_event = ""
+                    current_detail = None
+        finally:
+            try:
+                if self.proc is not None and self.proc.poll() is None:
+                    self.proc.terminate()
+                    self.proc.wait(timeout=0.2)
+            except Exception:
+                try:
+                    if self.proc is not None and self.proc.poll() is None:
+                        self.proc.kill()
+                except Exception:
+                    pass
+
+    def stop(self) -> None:
+        self._stop.set()
+        try:
+            if self.proc is not None and self.proc.poll() is None:
+                self.proc.terminate()
+        except Exception:
+            pass
+
+
+class WorkspaceSwitcherApp:
+    def __init__(self) -> None:
+        self.root = tk.Tk()
+        self.root.withdraw()
+        self.root.title(APP_NAME)
+        self.root.configure(bg=BG_COLOR)
+        self.root.overrideredirect(True)
+        self.root.attributes("-topmost", True)
+        self.root.bind("<Motion>", self.on_motion)
+        self.root.bind("<ButtonRelease-1>", lambda _: self.commit_hover())
+        self.root.bind("<ButtonRelease-3>", lambda _: self.hide())
+        self.root.bind_all("<Escape>", lambda _: self.hide())
+        self.root.protocol("WM_DELETE_WINDOW", self.shutdown)
+
+        self.normal_font = tkfont.Font(family="IBM Plex Mono", size=12)
+        self.title_font = tkfont.Font(family="IBM Plex Mono", size=14, weight="bold")
+
+        self.canvas = tk.Canvas(
+            self.root,
+            width=WINDOW_WIDTH,
+            height=WINDOW_HEIGHT,
+            bg=BG_COLOR,
+            highlightthickness=0,
+            bd=0,
+        )
+        self.canvas.pack(fill="both", expand=True)
+
+        self.command_queue: queue.SimpleQueue[str] = queue.SimpleQueue()
+        self.release_queue: queue.SimpleQueue[tuple[str, int]] = queue.SimpleQueue()
+        self.server = CommandServer(self.command_queue.put)
+        self.model = WorkspaceModel()
+        self.tiles: list[Tile] = []
+        self.pin_tiles: list[Tile] = []
+        self.visible = False
+        self.hovered_index: int | None = None
+        self.current_index: int | None = None
+        self.release_watcher: ReleaseWatcher | None = None
+        self.pointer_inside_once = False
+        self.visible_since = 0.0
+        self.shutdown_requested = False
+
+    def run(self) -> None:
+        self.server.start()
+        self.root.after(16, self.process_commands)
+        self.root.mainloop()
+
+    def process_commands(self) -> None:
+        while True:
+            try:
+                command = self.command_queue.get_nowait()
+            except queue.Empty:
+                break
+            self.handle_command(command)
+
+        while True:
+            try:
+                event = self.release_queue.get_nowait()
+            except queue.Empty:
+                break
+            self.handle_release_event(*event)
+
+        if not self.shutdown_requested:
+            self.root.after(16, self.process_commands)
+
+    def handle_command(self, command: str) -> None:
+        if command == "show":
+            self.show()
+        elif command == "commit":
+            self.commit_hover()
+        elif command == "hide":
+            self.hide()
+        elif command == "toggle":
+            if self.visible:
+                self.hide()
+            else:
+                self.show()
+        elif command == "reload":
+            self.refresh_workspaces()
+            if self.visible:
+                self.render()
+        elif command == "quit":
+            self.shutdown()
+
+    def handle_release_event(self, kind: str, detail: int) -> None:
+        if not self.visible:
+            return
+
+        if kind == "release" and detail == 11:
+            self.commit_hover()
+
+    def show(self) -> None:
+        self.refresh_workspaces()
+        self.place_window_near_pointer()
+        self.root.deiconify()
+        self.root.lift()
+        self.root.update_idletasks()
+        self.root.attributes("-topmost", True)
+        self.visible = True
+        self.visible_since = time.monotonic()
+        self.pointer_inside_once = False
+        self.sync_hover_to_pointer()
+        self.start_release_watcher()
+        self.root.after(POINTER_POLL_MS, self.poll_pointer)
+
+    def hide(self) -> None:
+        if not self.visible and not self.root.winfo_viewable():
+            return
+        self.stop_release_watcher()
+        self.clear_hover()
+        self.root.withdraw()
+        self.visible = False
+        self.pointer_inside_once = False
+
+    def shutdown(self) -> None:
+        self.shutdown_requested = True
+        self.server.close()
+        self.hide()
+        self.root.quit()
+
+    def refresh_workspaces(self) -> None:
+        workspaces, pins = self.model.load()
+        self.current_index = next(
+            (index for index, item in enumerate(workspaces) if item.is_current),
+            None,
+        )
+        self.render(workspaces, pins)
+
+    def render(self, workspaces: list[Workspace] | None = None, pins: list[Workspace] | None = None) -> None:
+        if workspaces is None:
+            workspaces = self.model.last_main
+        if pins is None:
+            pins = self.model.last_pins
+
+        self.canvas.delete("all")
+        self.tiles = []
+        self.pin_tiles = []
+
+        self.canvas.create_rectangle(
+            0,
+            0,
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            fill=PANEL_COLOR,
+            outline=PANEL_BORDER,
+            width=2,
+        )
+
+        self.canvas.create_text(
+            14,
+            18,
+            text="Workspace Switch",
+            fill=IDLE_TEXT,
+            font=self.title_font,
+            anchor="w",
+        )
+        self.canvas.create_text(
+            WINDOW_WIDTH - 14,
+            18,
+            text="release side button to switch",
+            fill=SUBTEXT,
+            font=self.normal_font,
+            anchor="e",
+        )
+
+        positions = self.tile_positions()
+        padded = workspaces[:9] + self.placeholder_workspaces(max(0, 9 - len(workspaces)))
+
+        for index, workspace in enumerate(padded[:9]):
+            x, y = positions[index]
+            tile = self.draw_tile(workspace, x, y, main=True)
+            self.tiles.append(tile)
+
+        if pins:
+            top = self.pin_row_top()
+            self.canvas.create_text(
+                14,
+                top - 12,
+                text="Pinned",
+                fill=SUBTEXT,
+                font=self.normal_font,
+                anchor="w",
+            )
+            for workspace, x, y, width, height in self.pin_tile_positions(pins):
+                tile = self.draw_tile(workspace, x, y, width=width, height=height, main=False)
+                self.pin_tiles.append(tile)
+
+        self.paint_state()
+
+    def tile_positions(self) -> list[tuple[int, int]]:
+        positions: list[tuple[int, int]] = []
+        start_x = PANEL_PADDING_X
+        start_y = PANEL_PADDING_Y + HEADER_HEIGHT
+        tile_width = self.main_tile_width()
+        tile_height = self.main_tile_height()
+
+        for row in range(3):
+            for col in range(3):
+                x = start_x + col * (tile_width + TILE_GAP)
+                y = start_y + row * (tile_height + TILE_GAP)
+                positions.append((x, y))
+
+        return positions
+
+    def main_tile_width(self) -> int:
+        return (WINDOW_WIDTH - 2 * PANEL_PADDING_X - 2 * TILE_GAP) // 3
+
+    def main_tile_height(self) -> int:
+        available = self.pin_row_top() - (PANEL_PADDING_Y + HEADER_HEIGHT) - TILE_GAP
+        return available // 3
+
+    def pin_row_top(self) -> int:
+        return WINDOW_HEIGHT - PANEL_PADDING_Y - self.pin_tile_height()
+
+    def pin_tile_height(self) -> int:
+        return 52
+
+    def pin_tile_positions(self, pins: list[Workspace]) -> list[tuple[Workspace, int, int, int, int]]:
+        top = self.pin_row_top()
+        count = max(1, len(pins))
+        total_gap = TILE_GAP * (count - 1)
+        width = (WINDOW_WIDTH - 2 * PANEL_PADDING_X - total_gap) // count
+        positions: list[tuple[Workspace, int, int, int, int]] = []
+        for index, workspace in enumerate(pins):
+            x = PANEL_PADDING_X + index * (width + TILE_GAP)
+            positions.append((workspace, x, top, width, self.pin_tile_height()))
+        return positions
+
+    def placeholder_workspaces(self, count: int) -> list[Workspace]:
+        return [
+            Workspace(num=None, name="unused", short_label="unused", is_current=False)
+            for _ in range(count)
+        ]
+
+    def draw_tile(
+        self,
+        workspace: Workspace,
+        x: int,
+        y: int,
+        width: int | None = None,
+        height: int | None = None,
+        main: bool = True,
+    ) -> Tile:
+        width = width if width is not None else self.main_tile_width()
+        height = height if height is not None else self.main_tile_height()
+        shape_id = self.canvas.create_rectangle(
+            x,
+            y,
+            x + width,
+            y + height,
+            fill=IDLE_TILE,
+            outline=PANEL_BORDER,
+            width=1,
+        )
+        title = workspace.short_label if workspace.short_label else workspace.name
+        subtitle = workspace.name if workspace.short_label != workspace.name else ""
+        title_y = y + (height * 0.44 if main else height * 0.5)
+        title_id = self.canvas.create_text(
+            x + width / 2,
+            title_y,
+            text=title,
+            fill=IDLE_TEXT,
+            font=self.title_font,
+        )
+        subtitle_id = self.canvas.create_text(
+            x + width / 2,
+            y + height - 18,
+            text=subtitle if main else "",
+            fill=SUBTEXT,
+            font=self.normal_font,
+        )
+        return Tile(
+            workspace=workspace,
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            shape_id=shape_id,
+            title_id=title_id,
+            subtitle_id=subtitle_id,
+        )
+
+    def paint_state(self) -> None:
+        all_tiles = self.tiles + self.pin_tiles
+        for index, tile in enumerate(all_tiles):
+            fill = IDLE_TILE
+            text = IDLE_TEXT
+
+            if tile.workspace.name == "unused":
+                fill = "#171717"
+                text = "#6f6f6f"
+            elif tile.workspace.is_current:
+                fill = CURRENT_TILE
+                text = CURRENT_TEXT
+
+            if index == self.hovered_index:
+                fill = HOT_TILE
+                text = HOT_TEXT
+
+            self.canvas.itemconfigure(tile.shape_id, fill=fill)
+            self.canvas.itemconfigure(tile.title_id, fill=text)
+            self.canvas.itemconfigure(
+                tile.subtitle_id,
+                fill=HOT_TEXT if index == self.hovered_index else SUBTEXT,
+            )
+
+    def on_motion(self, event: tk.Event) -> None:
+        self.set_hover_from_coords(event.x, event.y)
+
+    def clear_hover(self) -> None:
+        if self.hovered_index is not None:
+            self.hovered_index = None
+            self.paint_state()
+
+    def sync_hover_to_pointer(self) -> None:
+        pointer_x, pointer_y = self.root.winfo_pointerxy()
+        root_x = self.root.winfo_rootx()
+        root_y = self.root.winfo_rooty()
+        local_x = pointer_x - root_x
+        local_y = pointer_y - root_y
+        if 0 <= local_x < WINDOW_WIDTH and 0 <= local_y < WINDOW_HEIGHT:
+            self.pointer_inside_once = True
+        self.set_hover_from_coords(local_x, local_y)
+
+    def poll_pointer(self) -> None:
+        if not self.visible:
+            return
+
+        pointer_x, pointer_y = self.root.winfo_pointerxy()
+        root_x = self.root.winfo_rootx()
+        root_y = self.root.winfo_rooty()
+        local_x = pointer_x - root_x
+        local_y = pointer_y - root_y
+
+        if 0 <= local_x < WINDOW_WIDTH and 0 <= local_y < WINDOW_HEIGHT:
+            self.pointer_inside_once = True
+            self.set_hover_from_coords(local_x, local_y)
+        elif self.pointer_inside_once or time.monotonic() - self.visible_since >= ENTRY_GRACE_SECONDS:
+            self.hide()
+            return
+
+        self.root.after(POINTER_POLL_MS, self.poll_pointer)
+
+    def set_hover_from_coords(self, x: int, y: int) -> None:
+        hovered = self.tile_index_at_coords(x, y)
+
+        if hovered != self.hovered_index:
+            self.hovered_index = hovered
+            self.paint_state()
+
+    def tile_index_at_coords(self, x: int, y: int) -> int | None:
+        all_tiles = self.tiles + self.pin_tiles
+        for index, tile in enumerate(all_tiles):
+            if tile.workspace.name == "unused":
+                continue
+            if tile.contains(x, y):
+                return index
+        return None
+
+    def tile_index_at_pointer(self) -> int | None:
+        pointer_x, pointer_y = self.root.winfo_pointerxy()
+        root_x = self.root.winfo_rootx()
+        root_y = self.root.winfo_rooty()
+        return self.tile_index_at_coords(pointer_x - root_x, pointer_y - root_y)
+
+    def commit_hover(self) -> None:
+        target_index = self.tile_index_at_pointer()
+        self.commit_at_index(target_index)
+
+    def commit_at_coords(self, x: int, y: int) -> None:
+        target_index = self.tile_index_at_coords(x, y)
+        self.commit_at_index(target_index)
+
+    def commit_at_index(self, target_index: int | None) -> None:
+        self.hovered_index = target_index
+        self.paint_state()
+        if target_index is not None:
+            workspace = (self.tiles + self.pin_tiles)[target_index].workspace
+            if workspace.name != "unused":
+                switch_workspace(workspace.name)
+
+        self.hide()
+
+    def start_release_watcher(self) -> None:
+        self.stop_release_watcher()
+        self.release_watcher = ReleaseWatcher(self.release_queue.put)
+        self.release_watcher.start()
+
+    def stop_release_watcher(self) -> None:
+        if self.release_watcher is not None:
+            self.release_watcher.stop()
+            self.release_watcher = None
+
+    def place_window_near_pointer(self) -> None:
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        pointer_x, pointer_y = self.root.winfo_pointerxy()
+        x = max(0, min(pointer_x - WINDOW_WIDTH // 2, screen_w - WINDOW_WIDTH))
+        y = max(0, min(pointer_y - WINDOW_HEIGHT // 2, screen_h - WINDOW_HEIGHT))
+        self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{x}+{y}")
+
+
+def switch_workspace(name: str) -> None:
+    try:
+        subprocess.run(
+            ["i3-msg", f'workspace "{name}"'],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        pass
+
+
+def send_command(command: str, autostart: bool) -> int:
+    if not try_send(command):
+        if autostart:
+            start_daemon()
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                if try_send(command):
+                    return 0
+                time.sleep(0.05)
+        return 1
+    return 0
+
+
+def try_send(command: str) -> bool:
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.connect(str(SOCKET_PATH))
+            sock.sendall(command.encode("utf-8"))
+        return True
+    except OSError:
+        return False
+
+
+def start_daemon() -> None:
+    subprocess.Popen(
+        [sys.executable, str(Path(__file__).resolve()), "run"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+def run_daemon() -> int:
+    app = WorkspaceSwitcherApp()
+
+    def handle_signal(_sig: int, _frame: object) -> None:
+        app.shutdown()
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+    app.run()
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=APP_NAME)
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("run", help="Run the background daemon")
+    for name in ("show", "commit", "hide", "toggle", "reload", "quit"):
+        sub.add_parser(name, help=f"Send {name} to the daemon")
+
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    if args.command == "run":
+        return run_daemon()
+
+    autostart = args.command in {"show", "toggle"}
+    return send_command(args.command, autostart=autostart)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

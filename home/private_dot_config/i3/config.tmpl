@@ -6,6 +6,7 @@ set $mod Mod4
 set $terminal alacritty
 set $fileManager thunar
 set $menu rofi -show drun
+set $ws_switch ~/.local/bin/i3-workspace-switch
 
 # Look and feel
 gaps inner 0
@@ -49,6 +50,7 @@ exec_always --no-startup-id ~/.config/polybar/launch.sh
 exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec --no-startup-id nm-applet
 exec --no-startup-id copyq --start-server
+exec --no-startup-id $ws_switch run
 
 # Desktop-specific / Device-specific
 {{- if eq .deviceProfile "desktop" }}
@@ -69,7 +71,9 @@ exec --no-startup-id chromium --profile-directory=Default --class=chromium-work
 exec --no-startup-id chromium --profile-directory=Default --class=chromium-work
 
 # 3: TERM
-assign [class="(?i)^ghostty$"] $ws3
+# Do not auto-assign terminal windows here. Alacritty also reports class
+# "ghostty" for Hyprland compatibility, which would force Meta+q launches onto
+# this workspace in i3.
 exec --no-startup-id ghostty
 exec --no-startup-id ghostty
 
@@ -85,6 +89,7 @@ exec --no-startup-id slack
 exec --no-startup-id discord
 exec --no-startup-id fluffychat
 exec --no-startup-id thunderbird
+exec --no-startup-id jax-pad-desktop
 
 # Keybindings - Core
 bindsym $mod+q exec --no-startup-id $terminal
@@ -100,8 +105,15 @@ bindsym $mod+t exec --no-startup-id ~/.local/bin/i3-togglegroup
 # VPN Switcher
 bindsym F6 exec --no-startup-id ~/.local/bin/vpn-switcher
 
+# Workspace switcher on mouse side button
+bindsym --whole-window button11 exec --no-startup-id $ws_switch show
+
+# Scratchpad
+bindsym F12 [class="(?i)^jax-pad-desktop$"] scratchpad show; [class="(?i)^jax-pad-desktop$"] move position center
+
 # Window Rules
 for_window [class="^yad$"] floating enable, move position center, sticky enable
+for_window [class="(?i)^jax-pad-desktop$"] floating enable, move scratchpad, resize set 800 600, move position center
 for_window [class=".*"] title_format "" 
 
 # Move focus
