@@ -1,0 +1,180 @@
+# i3 Configuration
+# Device: {{ .deviceProfile }} ({{ .hostname }})
+# Managed by chezmoi - edit source at ~/dotfiles
+
+set $mod Mod4
+set $terminal alacritty
+set $fileManager thunar
+set $menu rofi -show drun
+
+# Look and feel
+gaps inner 0
+gaps outer 0
+default_border pixel 1
+default_floating_border pixel 1
+smart_gaps on
+smart_borders on
+
+# Colors
+# class                 border  backgr. text    indicator child_border
+client.focused          #e67e22 #242424 #e0e0e0 #e67e22   #e67e22
+client.focused_inactive #333333 #0f0f0f #888888 #333333   #333333
+client.unfocused        #333333 #0f0f0f #888888 #333333   #333333
+
+# Workspaces
+set $ws1 "1: WEB"
+set $ws2 "2: CODE"
+set $ws3 "3: TERM"
+set $ws4 "4: IDE"
+set $ws5 "5: VM"
+set $ws6 "6: GFX"
+set $ws7 "7: DOC"
+set $ws8 "8: GAME"
+set $ws9 "9: MISC"
+set $ws10 "10: TMP"
+set $pin_tg "pin-tg"
+set $pin_llm "pin-llm"
+set $pin_media "pin-media"
+set $pin_org "pin-org"
+set $pin_termius "pin-termius"
+
+# Input (Keyboard layout us/ru toggle)
+exec --no-startup-id setxkbmap -layout "us,ru" -option "grp:win_space_toggle,caps:escape,compose:ralt"
+
+# Autostart
+exec_always --no-startup-id ~/.fehbg
+exec --no-startup-id picom -b
+exec --no-startup-id dunst
+exec_always --no-startup-id ~/.config/polybar/launch.sh
+exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+exec --no-startup-id nm-applet
+exec --no-startup-id copyq --start-server
+
+# Desktop-specific / Device-specific
+{{- if eq .deviceProfile "desktop" }}
+exec --no-startup-id dispwin -d 2 ~/.config/i3/phillips.icc
+{{- else if .hasBattery }}
+exec --no-startup-id power-profiles-daemon || true
+{{- end }}
+
+# Apps Autostart
+# 1: WEB
+assign [class="(?i)^zen(-browser)?$"] $ws1
+exec --no-startup-id zen-browser
+exec --no-startup-id zen-browser
+
+# 2: CODE
+assign [class="^chromium-work$"] $ws2
+exec --no-startup-id chromium --profile-directory=Default --class=chromium-work
+exec --no-startup-id chromium --profile-directory=Default --class=chromium-work
+
+# 3: TERM
+assign [class="(?i)^ghostty$"] $ws3
+exec --no-startup-id ghostty
+exec --no-startup-id ghostty
+
+# pin-tg: Communications
+assign [class="^TelegramDesktop$"] $pin_tg
+assign [class="^Slack$"] $pin_tg
+assign [class="^discord$"] $pin_tg
+assign [class="^Fluffychat$"] $pin_tg
+assign [class="^org\.mozilla\.Thunderbird$"] $pin_tg
+
+exec --no-startup-id Telegram
+exec --no-startup-id slack
+exec --no-startup-id discord
+exec --no-startup-id fluffychat
+exec --no-startup-id thunderbird
+
+# Keybindings - Core
+bindsym $mod+q exec --no-startup-id $terminal
+bindsym $mod+k kill
+bindsym $mod+m exit
+bindsym $mod+l exec --no-startup-id "~/.local/bin/i3-lock-blur"
+bindsym $mod+v floating toggle
+bindsym $mod+r exec --no-startup-id $menu
+bindsym $mod+Shift+r restart
+bindsym $mod+j split toggle
+bindsym $mod+t exec --no-startup-id ~/.local/bin/i3-togglegroup
+
+# VPN Switcher
+bindsym F6 exec --no-startup-id ~/.local/bin/vpn-switcher
+
+# Window Rules
+for_window [class="^yad$"] floating enable, move position center, sticky enable
+for_window [class=".*"] title_format "" 
+
+# Move focus
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+bindsym Control+h focus left
+bindsym Control+j focus down
+bindsym Control+k focus up
+bindsym Control+l focus right
+
+# Move windows
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+bindsym Control+Shift+h move left
+bindsym Control+Shift+j move down
+bindsym Control+Shift+k move up
+bindsym Control+Shift+l move right
+
+# Floating drag/resize
+floating_modifier $mod
+
+# Switch workspaces
+bindsym $mod+1 workspace number $ws1
+bindsym $mod+2 workspace number $ws2
+bindsym $mod+3 workspace number $ws3
+bindsym $mod+4 workspace number $ws4
+bindsym $mod+5 workspace number $ws5
+bindsym $mod+6 workspace number $ws6
+bindsym $mod+7 workspace number $ws7
+bindsym $mod+8 workspace number $ws8
+bindsym $mod+9 workspace number $ws9
+
+# Move window to workspace
+bindsym $mod+Shift+1 move container to workspace number $ws1
+bindsym $mod+Shift+2 move container to workspace number $ws2
+bindsym $mod+Shift+3 move container to workspace number $ws3
+bindsym $mod+Shift+4 move container to workspace number $ws4
+bindsym $mod+Shift+5 move container to workspace number $ws5
+bindsym $mod+Shift+6 move container to workspace number $ws6
+bindsym $mod+Shift+7 move container to workspace number $ws7
+bindsym $mod+Shift+8 move container to workspace number $ws8
+bindsym $mod+Shift+9 move container to workspace number $ws9
+
+bindsym $mod+a workspace $pin_org
+bindsym $mod+Shift+a move container to workspace $pin_org
+bindsym $mod+c workspace $pin_tg
+bindsym $mod+Shift+c move container to workspace $pin_tg
+bindsym $mod+g workspace $pin_llm
+bindsym $mod+Shift+g move container to workspace $pin_llm
+bindsym $mod+x workspace $pin_media
+bindsym $mod+Shift+x move container to workspace $pin_media
+bindsym $mod+s workspace $pin_termius
+bindsym $mod+Shift+s move container to workspace $pin_termius
+
+# Media keys
+bindsym XF86AudioRaiseVolume exec --no-startup-id wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+bindsym XF86AudioLowerVolume exec --no-startup-id wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindsym XF86AudioMute exec --no-startup-id wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindsym XF86AudioMicMute exec --no-startup-id wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+{{- if .hasBattery }}
+bindsym XF86MonBrightnessUp exec --no-startup-id brightnessctl s 10%+
+bindsym XF86MonBrightnessDown exec --no-startup-id brightnessctl s 10%-
+{{- end }}
+bindsym XF86AudioNext exec --no-startup-id playerctl next
+bindsym XF86AudioPause exec --no-startup-id playerctl play-pause
+bindsym XF86AudioPlay exec --no-startup-id playerctl play-pause
+bindsym XF86AudioPrev exec --no-startup-id playerctl previous
+
+# Screenshots (scrot to clipboard)
+bindsym Print exec --no-startup-id ~/.local/bin/screenshot-x11

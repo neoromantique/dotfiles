@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Get the layout of the parent container of the currently focused window
+LAYOUT=$(i3-msg -t get_tree | jq -r '.. | objects | select(.nodes[]?.focused == true) | .layout')
+
+if [[ "$LAYOUT" == "tabbed" || "$LAYOUT" == "stacked" ]]; then
+    # If the parent is already tabbed, untab it (return to split layout)
+    i3-msg "layout toggle split"
+else
+    # If the parent is split, wrap the current window in a new tabbed container
+    i3-msg "split h, layout tabbed"
+fi

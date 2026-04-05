@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v xclip &> /dev/null; then
+    notify-send "Screenshot Error" "xclip is not installed. Please install it with: yay -S xclip" -u critical
+    exit 1
+fi
+
+# Take a selection screenshot and save to a temporary file
+# The -e flag tells scrot to run a command on the saved image, where $f is the image path
+scrot -s '/tmp/screenshot.png' -e 'xclip -selection clipboard -t image/png -i $f && rm $f'
+
+notify-send "Screenshot" "Selection copied to clipboard" -t 2000

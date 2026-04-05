@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Mute audio
+wpctl set-mute @DEFAULT_AUDIO_SINK@ 1 || true
+
+# Give a short moment to release the Win key (otherwise setxkbmap breaks modifier state in X11)
+sleep 0.3
+
+# Force English layout and restore keyboard options
+setxkbmap -layout "us,ru" -option "" -option "grp:win_space_toggle,caps:escape,compose:ralt"
+
+# Take a screenshot
+scrot /tmp/i3lock-bg.png
+
+# Blur it (requires imagemagick)
+magick /tmp/i3lock-bg.png -blur 0x8 /tmp/i3lock-bg.png
+
+# Lock screen
+i3lock -i /tmp/i3lock-bg.png
+
+# Cleanup
+rm /tmp/i3lock-bg.png

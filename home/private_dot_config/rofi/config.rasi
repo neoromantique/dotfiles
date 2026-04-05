@@ -1,0 +1,95 @@
+configuration {
+    font: "Terminus 12";
+    show-icons: false;
+    display-drun: "RUN";
+    display-run: "CMD";
+    display-window: "WIN";
+    drun-display-format: "{name}";
+}
+
+* {
+    /* Colors derived from your QuickShell design language */
+    bg: #0f0f0f;
+    bg-alt: #1a1a1a;
+    bg-selected: #242424;
+    fg: #e0e0e0;
+    fg-alt: #888888;
+    accent: #e67e22;
+    border-color: #333333;
+
+    background-color: @bg;
+    text-color: @fg;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    spacing: 0;
+}
+
+window {
+    width: 30%;
+    border: 1px;
+    border-color: @accent;
+    background-color: @bg;
+    padding: 20px;
+}
+
+mainbox {
+    background-color: transparent;
+    children: [inputbar, listview];
+    spacing: 20px;
+}
+
+inputbar {
+    background-color: @bg-alt;
+    border: 1px;
+    border-color: @border-color;
+    padding: 10px;
+    children: [prompt, entry];
+}
+
+prompt {
+    background-color: transparent;
+    text-color: @accent;
+    padding: 0 10px 0 0;
+}
+
+entry {
+    background-color: transparent;
+    text-color: @fg;
+    placeholder: "Search...";
+    placeholder-color: @fg-alt;
+}
+
+listview {
+    background-color: transparent;
+    columns: 1;
+    lines: 8;
+    spacing: 5px;
+    scrollbar: false;
+}
+
+element {
+    background-color: transparent;
+    padding: 8px 10px;
+    text-color: @fg-alt;
+    border: 1px;
+    border-color: transparent;
+}
+
+element normal.normal, element alternate.normal {
+    background-color: transparent;
+    text-color: @fg-alt;
+}
+
+element selected.normal {
+    background-color: @bg-alt;
+    text-color: @accent;
+    border: 1px;
+    border-color: @border-color;
+}
+
+element-text {
+    background-color: transparent;
+    text-color: inherit;
+    vertical-align: 0.5;
+}

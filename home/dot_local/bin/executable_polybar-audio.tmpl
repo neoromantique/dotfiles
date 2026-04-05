@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# Get sink name
+sink=$(pactl get-default-sink 2>/dev/null || pactl info | grep "Default Sink:" | awk '{print $3}')
+
+if echo "$sink" | grep -qiE "TX-?384"; then
+    label="SPK"
+elif echo "$sink" | grep -qi "ARTURIA"; then
+    label="HP"
+elif echo "$sink" | grep -qi "hdmi"; then
+    label="MONIT"
+else
+    label="OUT"
+fi
+
+# Get volume
+vol_info=$(wpctl get-volume @DEFAULT_AUDIO_SINK@)
+vol=$(echo "$vol_info" | awk '{print int($2*100) "%"}')
+
+if echo "$vol_info" | grep -qi "MUTED"; then
+    echo "%{F#888888}${label} muted%{F-}"
+else
+    echo "${label} ${vol}"
+fi
